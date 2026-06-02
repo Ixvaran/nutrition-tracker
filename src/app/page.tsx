@@ -64,6 +64,29 @@ export default async function Page({
     .eq('date', selectedDate)
     .single()
 
+  // Get date range for weekly recap (past 7 days ending at selectedDate)
+  const endDate = new Date(selectedDate)
+  const startDate = new Date(endDate)
+  startDate.setDate(startDate.getDate() - 6)
+
+  const formatDateStr = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  const startDateStr = formatDateStr(startDate)
+  const endDateStr = formatDateStr(endDate)
+
+  // Fetch daily logs of the past 7 days
+  const { data: weeklyLogs } = await supabase
+    .from('daily_logs')
+    .select('date, total_calories, total_protein, total_carbs, total_fat')
+    .eq('user_id', user.id)
+    .gte('date', startDateStr)
+    .lte('date', endDateStr)
+    .order('date', { ascending: true })
+
   // 3. Fetch food entries if log exists
   let foodEntries: any[] = []
   if (dailyLog?.id) {
@@ -92,6 +115,7 @@ export default async function Page({
       foodEntries={foodEntries}
       savedFoods={savedFoods || []}
       selectedDate={selectedDate}
+      weeklyLogs={weeklyLogs || []}
     />
   )
 }

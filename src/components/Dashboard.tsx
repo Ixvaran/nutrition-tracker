@@ -59,6 +59,13 @@ interface DashboardProps {
   foodEntries: FoodEntry[]
   savedFoods: SavedFood[]
   selectedDate: string
+  weeklyLogs?: {
+    date: string
+    total_calories: number
+    total_protein: number
+    total_carbs: number
+    total_fat: number
+  }[]
 }
 
 export default function Dashboard({ 
@@ -66,7 +73,8 @@ export default function Dashboard({
   dailyLog, 
   foodEntries, 
   savedFoods, 
-  selectedDate 
+  selectedDate,
+  weeklyLogs = []
 }: DashboardProps) {
   const router = useRouter()
   
@@ -510,7 +518,41 @@ export default function Dashboard({
   const calPercentage = Math.min(100, Math.round((loggedCal / targetCal) * 100))
   const proteinPercentage = Math.min(100, Math.round((loggedProtein / targetProtein) * 100))
   const carbsPercentage = Math.min(100, Math.round((loggedCarbs / targetCarbs) * 100))
-  const fatPercentage = Math.min(100, Math.round((loggedFat / targetFat) * 100))
+  const fatPercentage = Math.min(100, Math.round((loggedFat / targetFat) * 105))
+
+  // Generate past 7 days logs ending at selectedDate
+  const getWeeklyData = () => {
+    const data = []
+    const baseDate = new Date(selectedDate)
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(baseDate)
+      d.setDate(d.getDate() - i)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+      
+      const dbLog = weeklyLogs.find(log => log.date === dateStr)
+      data.push({
+        date: dateStr,
+        dayName: d.toLocaleDateString('id-ID', { weekday: 'short' }),
+        calories: dbLog ? Number(dbLog.total_calories) : 0,
+        protein: dbLog ? Number(dbLog.total_protein) : 0,
+        carbs: dbLog ? Number(dbLog.total_carbs) : 0,
+        fat: dbLog ? Number(dbLog.total_fat) : 0,
+      })
+    }
+    return data
+  }
+  const weeklyData = getWeeklyData()
+  
+  // Calculate weekly averages
+  const activeDays = weeklyData.filter(d => d.calories > 0).length
+  const totalCaloriesThisWeek = weeklyData.reduce((sum, d) => sum + d.calories, 0)
+  const avgCalories = activeDays > 0 ? Math.round(totalCaloriesThisWeek / activeDays) : 0
+  const avgProtein = activeDays > 0 ? Math.round(weeklyData.reduce((sum, d) => sum + d.protein, 0) / activeDays * 10) / 10 : 0
+  const avgCarbs = activeDays > 0 ? Math.round(weeklyData.reduce((sum, d) => sum + d.carbs, 0) / activeDays * 10) / 10 : 0
+  const avgFat = activeDays > 0 ? Math.round(weeklyData.reduce((sum, d) => sum + d.fat, 0) / activeDays * 10) / 10 : 0
 
   // ==========================================
   // WIZARD ONBOARDING: First-time user setup
@@ -717,7 +759,176 @@ export default function Dashboard({
             <span className="text-sm font-semibold">{statusMessage.text}</span>
             <button onClick={() => setStatusMessage(null)} className="text-xs opacity-60 hover:opacity-100 font-bold px-2">✕</button>
           </div>
-        )}
+        )}        {/* HERO DASHBOARD SECTION */}
+        <div className="col-span-12">
+          <div className={`rounded-3xl p-6 sm:p-8 transition-all relative overflow-hidden shadow-xl border-2 ${
+            isLight 
+              ? 'bg-gradient-to-br from-emerald-50 via-teal-50/50 to-lime-50/80 border-slate-300 text-slate-900' 
+              : 'bg-gradient-to-br from-[#0a1b15] via-[#09151e] to-[#0e1610] border-slate-900 text-slate-100'
+          }`}>
+            {/* Background elements */}
+            <div className="absolute -top-24 -left-24 w-64 h-64 bg-lime-400/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+              
+              {/* Left Column: Greeting and Motivation */}
+              <div className="lg:col-span-4 space-y-4">
+                <div className="inline-flex items-center space-x-2 bg-lime-400/20 text-lime-700 dark:text-lime-400 px-3 py-1.5 rounded-full text-xs font-bold border border-lime-400/30">
+                  <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+                  <span>Kebugaran Harian</span>
+                </div>
+                
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight leading-tight">
+                    Halo, <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-lime-500">{profile.username || 'Pengguna'}</span>!
+                  </h2>
+                  <p className={`text-sm mt-2 leading-relaxed font-semibold ${isLight ? 'text-slate-800' : 'text-slate-400'}`}>
+                    {calPercentage === 0 
+                      ? "Hari baru, semangat baru! Ayo catat makanan pertamamu hari ini untuk memantau asupan nutrisi harian." 
+                      : calPercentage < 50 
+                      ? "Awal yang baik! Teruskan mencatat asupan makananmu hari ini untuk mencapai target ideal tubuh."
+                      : calPercentage < 100 
+                      ? "Hebat! Kamu sudah hampir mencapai target kalorimu hari ini. Sedikit lagi!"
+                      : "Luar biasa! Target kalori harianmu telah tercapai. Jaga terus keseimbangan nutrisimu!"}
+                  </p>
+                </div>
+
+                <div className="pt-2 flex flex-wrap gap-3">
+                  <button 
+                    onClick={() => setShowRecalculate(true)}
+                    className={`text-xs font-bold border px-4 py-2.5 rounded-2xl transition-all cursor-pointer shadow-xs ${
+                      isLight ? 'bg-white border-slate-450 hover:bg-slate-100 text-slate-800' : 'bg-slate-900 border-slate-800 hover:bg-slate-850 text-slate-300'
+                    }`}
+                  >
+                    Ubah Target Profil
+                  </button>
+                  <div className={`text-xs font-bold px-4 py-2.5 rounded-2xl border flex items-center ${
+                    isLight ? 'bg-white border-slate-400 text-slate-800' : 'bg-slate-900 border-slate-800 text-slate-300'
+                  }`}>
+                    <span>Target: {targetCal} kkal</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle Column: Calories Circular/Slider Indicator */}
+              <div className="lg:col-span-4">
+                <div className={`rounded-3xl p-5 border flex flex-col justify-between h-full relative overflow-hidden backdrop-blur-md ${
+                  isLight ? 'bg-white/85 border-slate-350 shadow-xs' : 'bg-slate-955/40 border-slate-900/60'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-lime-700 dark:text-lime-400">Pencapaian Kalori</span>
+                    <span className="text-xs font-bold bg-lime-400/20 px-2 py-0.5 rounded-full text-lime-700 dark:text-lime-400 border border-lime-450/20">
+                      {calPercentage}%
+                    </span>
+                  </div>
+
+                  <div className="my-6">
+                    <div className="text-4xl font-black tracking-tight">{loggedCal} <span className="text-lg font-medium text-slate-500">kkal</span></div>
+                    <div className={`text-xs font-semibold mt-1 ${isLight ? 'text-slate-850' : 'text-slate-400'}`}>
+                      tersisa {Math.max(0, targetCal - loggedCal)} kkal dari target {targetCal} kkal
+                    </div>
+                  </div>
+
+                  {/* Progress bar with outline knob */}
+                  <div className="relative pt-1.5">
+                    <div className={`h-3.5 bg-slate-200 dark:bg-slate-955 border rounded-full overflow-hidden ${
+                      isLight ? 'border-slate-400' : 'border-slate-850'
+                    }`}>
+                      <div 
+                        className="bg-lime-400 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${calPercentage}%` }}
+                      />
+                    </div>
+                    {calPercentage > 0 && calPercentage < 100 && (
+                      <div 
+                        className="absolute top-[2px] w-5 h-5 bg-white border-2 border-black rounded-full -translate-x-1/2 shadow-md transition-all duration-500 flex items-center justify-center cursor-pointer"
+                        style={{ left: `${calPercentage}%` }}
+                      >
+                        <div className="w-1.5 h-1.5 bg-lime-500 rounded-full" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Macronutrients Dashboard */}
+              <div className="lg:col-span-4 space-y-3.5">
+                
+                {/* Protein */}
+                <div className={`p-3.5 rounded-2xl border transition-colors backdrop-blur-md ${
+                  isLight ? 'bg-white/85 border-slate-350' : 'bg-slate-955/40 border-slate-900/60'
+                }`}>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+                    <span className="flex items-center text-rose-650 dark:text-rose-455">
+                      <Flame className="h-4 w-4 mr-1.5 shrink-0" />
+                      Protein
+                    </span>
+                    <span className={`font-mono font-extrabold ${isLight ? 'text-slate-900' : 'text-slate-300'}`}>
+                      {loggedProtein}g <span className={`font-normal ${isLight ? 'text-slate-700' : 'opacity-65'}`}>/ {targetProtein}g</span> ({proteinPercentage}%)
+                    </span>
+                  </div>
+                  <div className={`h-2.5 bg-slate-200 dark:bg-slate-955 border rounded-full overflow-hidden ${
+                    isLight ? 'border-slate-400' : 'border-slate-850'
+                  }`}>
+                    <div 
+                      className="bg-rose-500 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${proteinPercentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Carbs */}
+                <div className={`p-3.5 rounded-2xl border transition-colors backdrop-blur-md ${
+                  isLight ? 'bg-white/85 border-slate-350' : 'bg-slate-955/40 border-slate-900/60'
+                }`}>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+                    <span className="flex items-center text-amber-600 dark:text-amber-400">
+                      <Footprints className="h-4 w-4 mr-1.5 shrink-0" />
+                      Karbohidrat
+                    </span>
+                    <span className={`font-mono font-extrabold ${isLight ? 'text-slate-900' : 'text-slate-300'}`}>
+                      {loggedCarbs}g <span className={`font-normal ${isLight ? 'text-slate-700' : 'opacity-65'}`}>/ {targetCarbs}g</span> ({carbsPercentage}%)
+                    </span>
+                  </div>
+                  <div className={`h-2.5 bg-slate-200 dark:bg-slate-955 border rounded-full overflow-hidden ${
+                    isLight ? 'border-slate-400' : 'border-slate-850'
+                  }`}>
+                    <div 
+                      className="bg-amber-500 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${carbsPercentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Fat */}
+                <div className={`p-3.5 rounded-2xl border transition-colors backdrop-blur-md ${
+                  isLight ? 'bg-white/85 border-slate-350' : 'bg-slate-955/40 border-slate-900/60'
+                }`}>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+                    <span className="flex items-center text-sky-600 dark:text-sky-400">
+                      <Droplets className="h-4 w-4 mr-1.5 shrink-0" />
+                      Lemak
+                    </span>
+                    <span className={`font-mono font-extrabold ${isLight ? 'text-slate-900' : 'text-slate-300'}`}>
+                      {loggedFat}g <span className={`font-normal ${isLight ? 'text-slate-700' : 'opacity-65'}`}>/ {targetFat}g</span> ({fatPercentage}%)
+                    </span>
+                  </div>
+                  <div className={`h-2.5 bg-slate-200 dark:bg-slate-955 border rounded-full overflow-hidden ${
+                    isLight ? 'border-slate-400' : 'border-slate-855'
+                  }`}>
+                    <div 
+                      className="bg-sky-500 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${fatPercentage}%` }}
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
 
         {/* PROMINENT DAILY TOKEN USAGE INDICATOR CARD */}
         <div className="col-span-12">
@@ -763,146 +974,6 @@ export default function Dashboard({
 
         {/* Column 1: Progress Indicators (lg: 8) */}
         <div className="lg:col-span-8 space-y-8">
-          <div className={`p-5 sm:p-8 rounded-3xl shadow-xs transition-colors overflow-hidden relative border-2 ${
-            isLight ? 'bg-white border-slate-400' : 'bg-[#0f1524] border-slate-900'
-          }`}>
-            {/* Ambient glows */}
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-lime-500/5 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2 className="text-lg font-black tracking-tight">Ringkasan Nutrisi Harian</h2>
-                <p className={`text-xs font-semibold ${isLight ? 'text-slate-750' : 'text-slate-500'}`}>Target berdasarkan profil berat, tinggi, & umur Anda</p>
-              </div>
-              <button 
-                onClick={() => setShowRecalculate(true)}
-                className={`text-xs font-bold border px-4 py-2 rounded-2xl transition-all cursor-pointer shadow-xs ${
-                  isLight ? 'bg-white border-slate-400 hover:bg-slate-100 text-slate-800' : 'bg-slate-900 border-slate-800 hover:bg-slate-850 text-slate-300'
-                }`}
-              >
-                Ubah Target Nutrisi
-              </button>
-            </div>
-
-            {/* Calories Rings/Pills Dashboard */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-              
-              {/* Primary Quest Pill (Like the green bar card in screenshot) */}
-              <div className={`md:col-span-5 rounded-3xl p-5 flex flex-col justify-between h-full relative overflow-hidden border ${
-                isLight ? 'bg-lime-400/10 border-lime-550/50' : 'bg-lime-400/5 border-lime-400/25'
-              }`}>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-lime-400/5 rounded-full blur-xl pointer-events-none" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-lime-700 dark:text-lime-400">Total Kalori</span>
-                  <span className="text-xs font-bold bg-white dark:bg-slate-900 px-2 py-0.5 rounded-full text-lime-700 dark:text-lime-400 border border-lime-450/20">
-                    {calPercentage}%
-                  </span>
-                </div>
-
-                <div className="my-6">
-                  <div className="text-4xl font-black tracking-tight">{loggedCal}</div>
-                  <div className={`text-xs font-semibold mt-1 ${isLight ? 'text-slate-800' : 'text-slate-400'}`}>
-                    dari target {targetCal} kkal
-                  </div>
-                </div>
-
-                {/* Progress bar with outline knob (Image Quest slider lookalike) */}
-                <div className="relative pt-1.5">
-                  <div className={`h-3.5 bg-slate-200 dark:bg-slate-950 border rounded-full overflow-hidden ${
-                    isLight ? 'border-slate-400' : 'border-slate-850'
-                  }`}>
-                    <div 
-                      className="bg-lime-400 h-full rounded-full transition-all duration-500"
-                      style={{ width: `${calPercentage}%` }}
-                    />
-                  </div>
-                  {calPercentage > 0 && calPercentage < 100 && (
-                    <div 
-                      className="absolute top-[2px] w-5 h-5 bg-white border-2 border-black rounded-full -translate-x-1/2 shadow-md transition-all duration-500 flex items-center justify-center cursor-pointer"
-                      style={{ left: `${calPercentage}%` }}
-                    >
-                      <div className="w-1.5 h-1.5 bg-lime-500 rounded-full" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Individual Macro Pillars (Quest List Items in screenshot) */}
-              <div className="md:col-span-7 space-y-4">
-                
-                {/* Protein Item */}
-                <div className={`p-4 rounded-2xl border-2 transition-colors ${
-                  isLight ? 'bg-slate-55/60 border-slate-400' : 'bg-slate-900/30 border-slate-900'
-                }`}>
-                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
-                    <span className="flex items-center text-rose-650 dark:text-rose-455">
-                      <Flame className="h-4 w-4 mr-1.5 shrink-0" />
-                      Protein
-                    </span>
-                    <span className={`font-mono font-extrabold ${isLight ? 'text-slate-900' : 'text-slate-300'}`}>
-                      {loggedProtein}g <span className={`font-normal ${isLight ? 'text-slate-700' : 'opacity-65'}`}>/ {targetProtein}g</span> ({proteinPercentage}%)
-                    </span>
-                  </div>
-                  <div className={`h-2.5 bg-slate-200 dark:bg-slate-950 border rounded-full overflow-hidden ${
-                    isLight ? 'border-slate-400' : 'border-slate-850'
-                  }`}>
-                    <div 
-                      className="bg-rose-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${proteinPercentage}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Carbs Item */}
-                <div className={`p-4 rounded-2xl border-2 transition-colors ${
-                  isLight ? 'bg-slate-55/60 border-slate-400' : 'bg-slate-900/30 border-slate-900'
-                }`}>
-                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
-                    <span className="flex items-center text-amber-600 dark:text-amber-400">
-                      <Footprints className="h-4 w-4 mr-1.5 shrink-0" />
-                      Karbohidrat
-                    </span>
-                    <span className={`font-mono font-extrabold ${isLight ? 'text-slate-900' : 'text-slate-300'}`}>
-                      {loggedCarbs}g <span className={`font-normal ${isLight ? 'text-slate-700' : 'opacity-65'}`}>/ {targetCarbs}g</span> ({carbsPercentage}%)
-                    </span>
-                  </div>
-                  <div className={`h-2.5 bg-slate-200 dark:bg-slate-950 border rounded-full overflow-hidden ${
-                    isLight ? 'border-slate-400' : 'border-slate-850'
-                  }`}>
-                    <div 
-                      className="bg-amber-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${carbsPercentage}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Fat Item */}
-                <div className={`p-4 rounded-2xl border-2 transition-colors ${
-                  isLight ? 'bg-slate-55/60 border-slate-400' : 'bg-slate-900/30 border-slate-900'
-                }`}>
-                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
-                    <span className="flex items-center text-sky-600 dark:text-sky-400">
-                      <Droplets className="h-4 w-4 mr-1.5 shrink-0" />
-                      Lemak
-                    </span>
-                    <span className={`font-mono font-extrabold ${isLight ? 'text-slate-900' : 'text-slate-300'}`}>
-                      {loggedFat}g <span className={`font-normal ${isLight ? 'text-slate-700' : 'opacity-65'}`}>/ {targetFat}g</span> ({fatPercentage}%)
-                    </span>
-                  </div>
-                  <div className={`h-2.5 bg-slate-200 dark:bg-slate-950 border rounded-full overflow-hidden ${
-                    isLight ? 'border-slate-400' : 'border-slate-855'
-                  }`}>
-                    <div 
-                      className="bg-sky-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${fatPercentage}%` }}
-                    />
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-
           {/* Logging Component / search and options */}
           <div className={`p-5 sm:p-6 rounded-3xl shadow-xs transition-colors border-2 ${
             isLight ? 'bg-white border-slate-400' : 'bg-[#0f1524] border-slate-900'
@@ -1527,8 +1598,117 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* Column 2: Personal Database Library (lg: 4) */}
+        {/* Column 2: Weekly Recap & Personal Database Library (lg: 4) */}
         <div className="lg:col-span-4 space-y-8">
+          
+          {/* WEEKLY RECAP CARD */}
+          <div className={`p-5 sm:p-6 rounded-3xl shadow-xs transition-colors space-y-4 border-2 ${
+            isLight ? 'bg-white border-slate-400' : 'bg-[#0f1524] border-slate-900'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black tracking-tight">Rekap Mingguan</h3>
+                <p className={`text-xs font-medium ${isLight ? 'text-slate-750' : 'text-slate-500'}`}>Analisis nutrisi 7 hari terakhir</p>
+              </div>
+              <Activity className="h-5 w-5 text-lime-500" />
+            </div>
+
+            {/* Average Calories / Metrics */}
+            <div className={`grid grid-cols-2 gap-3 p-3 rounded-2xl border-2 ${
+              isLight ? 'bg-slate-50/80 border-slate-350' : 'bg-slate-955/40 border-slate-900'
+            }`}>
+              <div className="text-center py-1">
+                <span className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'text-slate-800' : 'text-slate-500'}`}>Rata-rata Kalori</span>
+                <div className="text-lg font-black text-lime-650 dark:text-lime-400 font-mono mt-0.5">{avgCalories} kkal</div>
+              </div>
+              <div className="text-center py-1 border-l border-dashed border-slate-300 dark:border-slate-800">
+                <span className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'text-slate-800' : 'text-slate-500'}`}>Hari Aktif Catat</span>
+                <div className="text-lg font-black font-mono mt-0.5">{activeDays} <span className="text-[10px] font-bold text-slate-500">hari</span></div>
+              </div>
+            </div>
+
+            {/* Weekly Bar Chart */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-end justify-between h-28 px-2 pt-4 relative">
+                {/* Horizontal target guide line */}
+                <div 
+                  className="absolute left-0 right-0 border-t-2 border-dashed border-rose-500/30 dark:border-rose-500/20 z-0"
+                  style={{ bottom: '70%', height: '0px' }}
+                  title={`Target: ${targetCal} kkal`}
+                />
+                
+                {weeklyData.map((d, index) => {
+                  const pct = Math.min(100, Math.round((d.calories / targetCal) * 100))
+                  const barHeight = pct > 0 ? `${Math.max(8, pct * 0.8)}%` : '6%'
+                  const isSelected = d.date === selectedDate
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className="flex flex-col items-center flex-1 group cursor-pointer relative z-10"
+                      onClick={() => router.push(`/?date=${d.date}`)}
+                    >
+                      {/* Tooltip on hover */}
+                      <div className="absolute bottom-full mb-2 bg-slate-950 text-white dark:bg-white dark:text-slate-950 text-[10px] font-black rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg w-28 text-center -translate-y-1 select-none z-50">
+                        <div className="font-bold border-b border-white/20 pb-0.5 mb-1">{d.dayName}, {d.date.slice(5)}</div>
+                        <div className="font-mono">{d.calories} kkal</div>
+                        <div className="text-[8px] font-medium opacity-80">P:{d.protein}g K:{d.carbs}g L:{d.fat}g</div>
+                      </div>
+
+                      {/* Bar */}
+                      <div className="w-6 sm:w-8 h-20 flex items-end">
+                        <div 
+                          className={`w-full rounded-t-lg transition-all duration-300 ${
+                            isSelected 
+                              ? 'bg-lime-400 ring-2 ring-black dark:ring-white scale-x-105 shadow-sm' 
+                              : d.calories > targetCal 
+                              ? 'bg-emerald-500/80 group-hover:bg-emerald-500'
+                              : d.calories === 0 
+                              ? 'bg-slate-200 dark:bg-slate-800' 
+                              : 'bg-lime-400/60 group-hover:bg-lime-400/85'
+                          }`}
+                          style={{ height: barHeight }}
+                        />
+                      </div>
+
+                      {/* Day Label */}
+                      <span className={`text-[10px] font-black mt-2 uppercase ${
+                        isSelected 
+                          ? 'text-lime-700 dark:text-lime-400 scale-110' 
+                          : 'text-slate-700 dark:text-slate-400'
+                      }`}>
+                        {d.dayName}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-[10px] text-center font-bold text-slate-500 italic">
+                *Klik kolom hari di atas untuk beralih tanggal
+              </div>
+            </div>
+            
+            {/* Average Macros */}
+            <div className={`pt-3 border-t text-[10px] font-bold ${isLight ? 'border-slate-350' : 'border-slate-855'}`}>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-slate-500">Rata-rata Makronutrisi Harian:</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center text-[11px] mt-1.5">
+                <div className="p-1.5 rounded-xl bg-rose-500/5 text-rose-550 border border-rose-500/10">
+                  <div className="font-black font-mono">{avgProtein}g</div>
+                  <div className="text-[9px] font-medium opacity-80">Protein</div>
+                </div>
+                <div className="p-1.5 rounded-xl bg-amber-500/5 text-amber-600 dark:text-amber-500 border border-amber-500/10">
+                  <div className="font-black font-mono">{avgCarbs}g</div>
+                  <div className="text-[9px] font-medium opacity-80">Karbo</div>
+                </div>
+                <div className="p-1.5 rounded-xl bg-sky-500/5 text-sky-655 dark:text-sky-400 border border-sky-500/10">
+                  <div className="font-black font-mono">{avgFat}g</div>
+                  <div className="text-[9px] font-medium opacity-80">Lemak</div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className={`p-5 sm:p-6 rounded-3xl shadow-xs transition-colors space-y-4 border-2 ${
             isLight ? 'bg-white border-slate-400' : 'bg-[#0f1524] border-slate-900'
           }`}>
