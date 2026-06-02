@@ -642,7 +642,7 @@ export default function Dashboard({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
               
               {/* Primary Quest Pill (Like the green bar card in screenshot) */}
-              <div className={`rounded-3xl p-5 flex flex-col justify-between h-full relative overflow-hidden border ${
+              <div className={`md:col-span-5 rounded-3xl p-5 flex flex-col justify-between h-full relative overflow-hidden border ${
                 isLight ? 'bg-lime-400/10 border-lime-550/50' : 'bg-lime-400/5 border-lime-400/25'
               }`}>
                 <div className="absolute top-0 right-0 w-24 h-24 bg-lime-400/5 rounded-full blur-xl pointer-events-none" />
