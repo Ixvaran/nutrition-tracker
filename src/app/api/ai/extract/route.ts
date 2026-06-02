@@ -152,7 +152,42 @@ Your output must be a valid JSON object matching the following structure:
       }
     }
 
-    return NextResponse.json(validatedData.data)
+    // 6. Record token usage in daily_logs
+    const totalTokens = rawData.usage?.total_tokens || 0
+    if (totalTokens > 0) {
+      let { data: log, error: logError } = await supabase
+        .from('daily_logs')
+        .select('id, tokens_used')
+        .eq('user_id', user.id)
+        .eq('date', todayStr)
+        .single()
+
+      if (logError && logError.code === 'PGRST116') {
+        await supabase
+          .from('daily_logs')
+          .insert({
+            user_id: user.id,
+            date: todayStr,
+            total_calories: 0,
+            total_protein: 0,
+            total_carbs: 0,
+            total_fat: 0,
+            tokens_used: totalTokens
+          })
+      } else if (!logError && log) {
+        await supabase
+          .from('daily_logs')
+          .update({
+            tokens_used: (log.tokens_used || 0) + totalTokens
+          })
+          .eq('id', log.id)
+      }
+    }
+
+    return NextResponse.json({
+      ...validatedData.data,
+      tokens_spent: totalTokens
+    })
   } catch (err: any) {
     console.error('AI API Route Error:', err)
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })

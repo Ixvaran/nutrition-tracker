@@ -59,7 +59,7 @@ export default async function Page({
   // 2. Fetch daily log for selected date
   const { data: dailyLog } = await supabase
     .from('daily_logs')
-    .select('id, total_calories, total_protein, total_carbs, total_fat')
+    .select('id, total_calories, total_protein, total_carbs, total_fat, tokens_used')
     .eq('user_id', user.id)
     .eq('date', selectedDate)
     .single()

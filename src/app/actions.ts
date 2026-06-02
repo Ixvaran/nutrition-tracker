@@ -110,7 +110,8 @@ export async function recalculateMacros(input: RecalculateMacrosInput) {
       tdee_target: targetCalories,
       protein_target: targetProtein,
       carbs_target: targetCarbs,
-      fat_target: targetFat
+      fat_target: targetFat,
+      has_onboarded: true
     })
     .eq('id', user.id)
 

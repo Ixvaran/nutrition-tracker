@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  Activity, Plus, Trash2, Search, Brain, Key, Settings, 
+  Activity, Plus, Trash2, Search, Brain, Key, 
   RefreshCw, LogOut, Check, Sparkles, User, Database, Dumbbell, AlertTriangle 
 } from 'lucide-react'
 import { 
@@ -16,6 +16,7 @@ interface Profile {
   id: string
   role: 'free' | 'pro'
   username?: string
+  has_onboarded: boolean
   daily_ai_requests: number
   last_request_date: string
   tdee_target: number
@@ -52,6 +53,7 @@ interface DashboardProps {
     total_protein: number
     total_carbs: number
     total_fat: number
+    tokens_used: number
   } | null
   foodEntries: FoodEntry[]
   savedFoods: SavedFood[]
@@ -83,26 +85,26 @@ export default function Dashboard({
   
   // AI query states
   const [aiLoading, setAiLoading] = useState(false)
-  const [aiResult, setAiResult] = useState<AIExtractionResponse | null>(null)
+  const [aiResult, setAiResult] = useState<(AIExtractionResponse & { tokens_spent?: number }) | null>(null)
   const [aiSaveToLib, setAiSaveToLib] = useState(true)
   const [aiError, setAiError] = useState<string | null>(null)
   
-  // Forms states
+  // Form states configured as strings to prevent leading zeros in UI
   const [recalcForm, setRecalcForm] = useState({
     gender: 'male',
-    weight: 75,
-    height: 175,
-    age: 28,
+    weight: '70',
+    height: '170',
+    age: '25',
     activityLevel: 1.375,
     goal: 'maintain'
   })
   
   const [manualForm, setManualForm] = useState({
     food_name: '',
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
+    calories: '',
+    protein: '',
+    carbs: '',
+    fat: '',
     saveToDatabase: false
   })
   
@@ -117,15 +119,26 @@ export default function Dashboard({
     }
   }, [])
 
+  // If user is onboarded, initialize recalculate form with their actual DB values
+  useEffect(() => {
+    if (profile.has_onboarded) {
+      // Find weight/height/age or keep defaults
+      setRecalcForm(prev => ({
+        ...prev,
+        // Fallbacks since DB only saves targets, BMR inputs themselves aren't stored
+      }))
+    }
+  }, [profile])
+
   // Save API Key to localStorage
   const handleSaveApiKey = (key: string) => {
     localStorage.setItem('deepseek_api_key', key)
     setCustomApiKey(key)
     setShowApiKeyModal(false)
-    setStatusMessage({ type: 'success', text: 'API Key saved locally.' })
+    setStatusMessage({ type: 'success', text: 'API Key berhasil disimpan di browser Anda.' })
   }
 
-  // Handle hybrid search autocompletion
+  // Handle autocomplete search
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setSearchResults([])
@@ -137,7 +150,7 @@ export default function Dashboard({
     setSearchResults(filtered)
   }, [searchTerm, savedFoods])
 
-  // Handle manual macro calculations
+  // Handle macro calculations submission
   const handleRecalculate = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -145,9 +158,9 @@ export default function Dashboard({
     
     const res = await recalculateMacros({
       gender: recalcForm.gender as 'male' | 'female',
-      weight: Number(recalcForm.weight),
-      height: Number(recalcForm.height),
-      age: Number(recalcForm.age),
+      weight: Number(recalcForm.weight || 0),
+      height: Number(recalcForm.height || 0),
+      age: Number(recalcForm.age || 0),
       activityLevel: Number(recalcForm.activityLevel),
       goal: recalcForm.goal as 'lose' | 'maintain' | 'gain'
     })
@@ -156,13 +169,13 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: 'Macros targets updated successfully!' })
+      setStatusMessage({ type: 'success', text: 'Target kalori dan nutrisi berhasil diperbarui!' })
       setShowRecalculate(false)
       router.refresh()
     }
   }
 
-  // Handle adding direct portion-multiplied saved food
+  // Handle adding portion-multiplied saved food
   const handleAddSavedFood = async () => {
     if (!selectedSavedFood) return
     setIsSubmitting(true)
@@ -190,7 +203,7 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: `Logged ${selectedSavedFood.food_name} (${portionMultiplier}x serving)` })
+      setStatusMessage({ type: 'success', text: `Berhasil mencatat ${selectedSavedFood.food_name} (${portionMultiplier}x porsi)` })
       setSearchTerm('')
       setSelectedSavedFood(null)
       setPortionMultiplier(1.0)
@@ -210,15 +223,15 @@ export default function Dashboard({
       parsed_ingredients: [{
         ingredient_name: manualForm.food_name,
         estimated_grams: 0,
-        calories: manualForm.calories,
-        protein: manualForm.protein,
-        carbs: manualForm.carbs,
-        fat: manualForm.fat
+        calories: Number(manualForm.calories || 0),
+        protein: Number(manualForm.protein || 0),
+        carbs: Number(manualForm.carbs || 0),
+        fat: Number(manualForm.fat || 0)
       }],
-      calories: manualForm.calories,
-      protein: manualForm.protein,
-      carbs: manualForm.carbs,
-      fat: manualForm.fat,
+      calories: Number(manualForm.calories || 0),
+      protein: Number(manualForm.protein || 0),
+      carbs: Number(manualForm.carbs || 0),
+      fat: Number(manualForm.fat || 0),
       multiplier: 1,
       saveToSavedFoods: manualForm.saveToDatabase
     })
@@ -227,13 +240,13 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: `Successfully logged "${manualForm.food_name}"` })
+      setStatusMessage({ type: 'success', text: `Berhasil mencatat "${manualForm.food_name}" ke buku harian` })
       setManualForm({
         food_name: '',
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
+        calories: '',
+        protein: '',
+        carbs: '',
+        fat: '',
         saveToDatabase: false
       })
       setShowManualAdd(false)
@@ -241,7 +254,7 @@ export default function Dashboard({
     }
   }
 
-  // Handle DeepSeek AI parsing NLU
+  // Handle automatic analysis via API
   const handleAiExtract = async () => {
     if (!searchTerm.trim()) return
     setAiLoading(true)
@@ -257,7 +270,7 @@ export default function Dashboard({
         if (!customApiKey) {
           setAiLoading(false)
           setShowApiKeyModal(true)
-          setAiError('Your account is in Pro Tier (BYOK). Please configure your DeepSeek API Key to proceed.')
+          setAiError('Anda menggunakan Pro Tier (Kunci Mandiri). Silakan masukkan Kunci API Anda terlebih dahulu.')
           return
         }
         headers['x-api-key'] = customApiKey
@@ -272,18 +285,18 @@ export default function Dashboard({
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to analyze food query')
+        throw new Error(data.error || 'Gagal menganalisis menu makanan Anda.')
       }
 
       setAiResult(data)
     } catch (err: any) {
-      setAiError(err.message || 'Something went wrong')
+      setAiError(err.message || 'Terjadi kesalahan saat menghubungkan ke sistem analisis.')
     } finally {
       setAiLoading(false)
     }
   }
 
-  // Save the result parsed by AI into daily logs
+  // Save parsed food into daily logs
   const handleSaveAiResult = async () => {
     if (!aiResult) return
     setIsSubmitting(true)
@@ -304,7 +317,7 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: `Successfully logged AI parsed food: "${aiResult.food_name}"` })
+      setStatusMessage({ type: 'success', text: `Berhasil mencatat "${aiResult.food_name}" ke buku harian` })
       setAiResult(null)
       setSearchTerm('')
       router.refresh()
@@ -317,19 +330,19 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: 'Log entry removed' })
+      setStatusMessage({ type: 'success', text: 'Catatan makanan berhasil dihapus' })
       router.refresh()
     }
   }
 
-  // Role Toggler for easy user testing
+  // Role Toggler
   const handleToggleRole = async () => {
     const nextRole = profile.role === 'free' ? 'pro' : 'free'
     const res = await toggleUserRole(nextRole)
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: `Switched tier to ${nextRole.toUpperCase()}` })
+      setStatusMessage({ type: 'success', text: `Berhasil beralih ke paket ${nextRole.toUpperCase()}` })
       router.refresh()
     }
   }
@@ -350,6 +363,127 @@ export default function Dashboard({
   const carbsPercentage = Math.min(100, Math.round((loggedCarbs / targetCarbs) * 100))
   const fatPercentage = Math.min(100, Math.round((loggedFat / targetFat) * 100))
 
+  // ==========================================
+  // WIZARD ONBOARDING: First-time user setup
+  // ==========================================
+  if (!profile.has_onboarded) {
+    return (
+      <div className="min-h-screen bg-radial from-slate-900 via-slate-955 to-black text-slate-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-lg bg-slate-900/80 border border-slate-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden backdrop-blur-md">
+          <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="h-14 w-14 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center border border-emerald-500/20 mb-4">
+              <Dumbbell className="h-8 w-8" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+              Halo! Mari Atur Target Kalori & Nutrisimu
+            </h2>
+            <p className="text-xs text-slate-400 mt-2 max-w-sm">
+              Sebelum mulai mencatat makanan, kami perlu sedikit info tentang tubuhmu untuk menghitung kebutuhan nutrisi harianmu secara akurat.
+            </p>
+          </div>
+
+          <form onSubmit={handleRecalculate} className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Jenis Kelamin</label>
+              <select 
+                value={recalcForm.gender}
+                onChange={(e) => setRecalcForm({...recalcForm, gender: e.target.value})}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+              >
+                <option value="male">Laki-laki</option>
+                <option value="female">Perempuan</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Berat (kg)</label>
+                <input 
+                  type="number" 
+                  required
+                  placeholder="70"
+                  min="30"
+                  max="300"
+                  value={recalcForm.weight}
+                  onChange={(e) => setRecalcForm({...recalcForm, weight: e.target.value})}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tinggi (cm)</label>
+                <input 
+                  type="number" 
+                  required
+                  placeholder="170"
+                  min="100"
+                  max="250"
+                  value={recalcForm.height}
+                  onChange={(e) => setRecalcForm({...recalcForm, height: e.target.value})}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Umur (tahun)</label>
+                <input 
+                  type="number" 
+                  required
+                  placeholder="25"
+                  min="10"
+                  max="120"
+                  value={recalcForm.age}
+                  onChange={(e) => setRecalcForm({...recalcForm, age: e.target.value})}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tingkat Aktivitas Harian</label>
+              <select 
+                value={recalcForm.activityLevel}
+                onChange={(e) => setRecalcForm({...recalcForm, activityLevel: Number(e.target.value)})}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+              >
+                <option value={1.2}>Sangat Jarang Olahraga (Kerja kantoran di meja)</option>
+                <option value={1.375}>Olahraga Ringan (Jalan kaki/olahraga 1-3 hari/minggu)</option>
+                <option value={1.55}>Aktif Sedang (Olahraga teratur 3-5 hari/minggu)</option>
+                <option value={1.725}>Sangat Aktif (Latihan berat/olahraga harian 6-7 hari/minggu)</option>
+                <option value={1.9}>Atlet / Pekerja Fisik Berat (Latihan berat 2x sehari)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Target Kebugaran Anda</label>
+              <select 
+                value={recalcForm.goal}
+                onChange={(e) => setRecalcForm({...recalcForm, goal: e.target.value})}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+              >
+                <option value="lose">Menurunkan Berat Badan (-500 kalori)</option>
+                <option value="maintain">Menjaga Berat Badan (Kalori seimbang)</option>
+                <option value="gain">Meningkatkan Massa Otot (+300 kalori)</option>
+              </select>
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 disabled:opacity-50 text-black font-extrabold py-3.5 rounded-xl text-sm transition-all cursor-pointer shadow-lg shadow-emerald-950/20 mt-4"
+            >
+              {isSubmitting ? 'Menghitung Kalori...' : 'Hitung Target Kebutuhan Kalori Saya'}
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  // ==========================================
+  // NORMAL DASHBOARD VIEW
+  // ==========================================
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header */}
@@ -361,17 +495,17 @@ export default function Dashboard({
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
-                NutriFit Tracker
+                NutriFit
               </h1>
-              <p className="text-xs text-slate-400">AI-Powered Fitness Ledger</p>
+              <p className="text-xs text-slate-400">Buku Harian Kesehatan Makanan</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-3">
             {profile.username && (
-              <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-350">
+              <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-300">
                 <User className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Hi, {profile.username}</span>
+                <span>Hai, {profile.username}</span>
               </div>
             )}
 
@@ -380,7 +514,7 @@ export default function Dashboard({
               type="date" 
               value={selectedDate}
               onChange={(e) => router.push(`/?date=${e.target.value}`)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500 cursor-pointer"
             />
 
             {/* Role indicator / settings switcher */}
@@ -392,9 +526,9 @@ export default function Dashboard({
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-                title="Click to toggle tier"
+                title="Beralih ke Paket Gratis (Limit Harian)"
               >
-                Free
+                Gratis
               </button>
               <button 
                 onClick={handleToggleRole}
@@ -403,7 +537,7 @@ export default function Dashboard({
                     ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-                title="Click to toggle tier"
+                title="Beralih ke Paket Mandiri (BYOK)"
               >
                 Pro
               </button>
@@ -412,8 +546,8 @@ export default function Dashboard({
             {profile.role === 'pro' && (
               <button
                 onClick={() => setShowApiKeyModal(true)}
-                className="bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 p-2 rounded-lg transition-colors relative"
-                title="Configure DeepSeek API Key"
+                className="bg-slate-900 hover:bg-slate-855 border border-slate-800 text-slate-300 p-2 rounded-lg transition-colors relative cursor-pointer"
+                title="Atur Kunci API Mandiri"
               >
                 <Key className="h-4 w-4" />
                 {!customApiKey && (
@@ -424,8 +558,8 @@ export default function Dashboard({
 
             <button
               onClick={() => signOutAction()}
-              className="text-slate-400 hover:text-rose-400 p-2 rounded-lg transition-colors"
-              title="Sign Out"
+              className="text-slate-400 hover:text-rose-400 p-2 rounded-lg transition-colors cursor-pointer"
+              title="Keluar Akun"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -450,7 +584,7 @@ export default function Dashboard({
 
         {/* Column 1: Progress Indicators (lg: 8) */}
         <div className="lg:col-span-8 space-y-8">
-          
+Progress Indicators
           {/* Targets Progress Panel */}
           <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-2xl shadow-xl relative overflow-hidden backdrop-blur-sm">
             <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -459,25 +593,25 @@ export default function Dashboard({
               <div>
                 <h2 className="text-lg font-bold text-slate-100 flex items-center">
                   <Dumbbell className="h-5 w-5 text-emerald-400 mr-2" />
-                  Daily Nutrition Summary
+                  Target Kalori & Nutrisi Hari Ini
                 </h2>
-                <p className="text-xs text-slate-400">Comparing your intake against calculated TDEE targets</p>
+                <p className="text-xs text-slate-400">Membandingkan asupan makanan dengan target tubuh Anda</p>
               </div>
               <button 
                 onClick={() => setShowRecalculate(true)}
-                className="text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all flex items-center"
+                className="text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all flex items-center cursor-pointer"
               >
                 <RefreshCw className="h-3 w-3 mr-1.5" />
-                Recalculate Macros
+                Ubah Profil Tubuh
               </button>
             </div>
 
             {/* Calories Ring / Progress */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="md:col-span-1 flex flex-col items-center justify-center border-r border-slate-800/50 pr-4 md:border-r-slate-800">
-                <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Calories</span>
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Energi Kalori</span>
                 <span className="text-3xl font-extrabold text-white mt-1">{loggedCal}</span>
-                <span className="text-xs text-slate-500 mt-1">/ {targetCal} kcal</span>
+                <span className="text-xs text-slate-500 mt-1">dari {targetCal} kkal</span>
                 
                 {/* Visual Progress Pill */}
                 <div className="w-full bg-slate-950 rounded-full h-2 mt-4 overflow-hidden border border-slate-850">
@@ -486,7 +620,7 @@ export default function Dashboard({
                     style={{ width: `${calPercentage}%` }}
                   />
                 </div>
-                <span className="text-xs text-emerald-400 font-semibold mt-1">{calPercentage}%</span>
+                <span className="text-xs text-emerald-400 font-semibold mt-1">{calPercentage}% Tercapai</span>
               </div>
 
               {/* Macros Breakdown Progress Bars */}
@@ -494,7 +628,7 @@ export default function Dashboard({
                 {/* Protein */}
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-rose-400">Protein (g)</span>
+                    <span className="text-rose-400">Protein (Membangun Otot)</span>
                     <span className="text-slate-300">{loggedProtein}g / {targetProtein}g</span>
                   </div>
                   <div className="bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-850">
@@ -508,7 +642,7 @@ export default function Dashboard({
                 {/* Carbs */}
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-amber-400">Carbs (g)</span>
+                    <span className="text-amber-400">Karbohidrat (Energi Utama)</span>
                     <span className="text-slate-300">{loggedCarbs}g / {targetCarbs}g</span>
                   </div>
                   <div className="bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-850">
@@ -522,7 +656,7 @@ export default function Dashboard({
                 {/* Fat */}
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-sky-400">Fat (g)</span>
+                    <span className="text-sky-400">Lemak (Fungsi Hormon & Sendi)</span>
                     <span className="text-slate-300">{loggedFat}g / {targetFat}g</span>
                   </div>
                   <div className="bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-850">
@@ -534,6 +668,18 @@ export default function Dashboard({
                 </div>
               </div>
             </div>
+
+            {/* Token Usage Stats Indicator at bottom of ring card */}
+            <div className="border-t border-slate-800/60 mt-5 pt-3.5 flex justify-between items-center text-xs text-slate-500">
+              <span className="flex items-center">
+                <Database className="h-3.5 w-3.5 mr-1 text-slate-655" />
+                Hari ini: <strong className="text-slate-350 ml-1">{foodEntries.length} makanan dicatat</strong>
+              </span>
+              <span className="flex items-center">
+                <Brain className="h-3.5 w-3.5 mr-1 text-slate-655" />
+                Penggunaan Token API Hari Ini: <strong className="text-cyan-400 ml-1 font-mono">{dailyLog?.tokens_used || 0} token</strong>
+              </span>
+            </div>
           </div>
 
           {/* Logging Component / search and options */}
@@ -542,74 +688,78 @@ export default function Dashboard({
               <div>
                 <h3 className="text-md font-bold text-slate-100 flex items-center">
                   <Plus className="h-5 w-5 text-emerald-400 mr-2" />
-                  Log Food Entry
+                  Hari ini kamu sudah makan apa saja?
                 </h3>
-                <p className="text-xs text-slate-400">Type to search foods, use AI extraction, or add manually</p>
+                <p className="text-xs text-slate-400">Tulis menu makanmu, sistem akan mendeteksi kandungan gizinya secara otomatis</p>
               </div>
               <button 
                 onClick={() => setShowManualAdd(!showManualAdd)}
-                className="text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+                className="text-xs font-semibold text-emerald-400 hover:text-emerald-350 transition-colors bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg cursor-pointer"
               >
-                {showManualAdd ? 'Cancel Manual Add' : 'Manual Add Macros'}
+                {showManualAdd ? 'Kembali ke Kolom Pencarian' : 'Catat Secara Manual'}
               </button>
             </div>
 
             {showManualAdd ? (
               /* Manual Input Form */
-              <form onSubmit={handleManualInsert} className="bg-slate-950/60 p-4 border border-slate-850 rounded-xl space-y-4">
-                <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Manual Add Form</h4>
+              <form onSubmit={handleManualInsert} className="bg-slate-950/60 p-5 border border-slate-850 rounded-xl space-y-4">
+                <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Formulir Catatan Manual</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Food Name</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Makanan</label>
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g. White Rice"
+                      placeholder="Contoh: Nasi Goreng Gila"
                       value={manualForm.food_name}
                       onChange={(e) => setManualForm({...manualForm, food_name: e.target.value})}
                       className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Calories (kcal)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Kalori (kkal)</label>
                     <input 
                       type="number" 
+                      placeholder="0"
                       min="0"
-                      value={manualForm.calories || ''}
-                      onChange={(e) => setManualForm({...manualForm, calories: Number(e.target.value)})}
+                      value={manualForm.calories}
+                      onChange={(e) => setManualForm({...manualForm, calories: e.target.value})}
                       className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Protein (g)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Protein (gram)</label>
                     <input 
                       type="number" 
+                      placeholder="0"
                       step="0.1"
                       min="0"
-                      value={manualForm.protein || ''}
-                      onChange={(e) => setManualForm({...manualForm, protein: Number(e.target.value)})}
+                      value={manualForm.protein}
+                      onChange={(e) => setManualForm({...manualForm, protein: e.target.value})}
                       className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Carbs (g)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Karbohidrat (gram)</label>
                     <input 
                       type="number" 
+                      placeholder="0"
                       step="0.1"
                       min="0"
-                      value={manualForm.carbs || ''}
-                      onChange={(e) => setManualForm({...manualForm, carbs: Number(e.target.value)})}
+                      value={manualForm.carbs}
+                      onChange={(e) => setManualForm({...manualForm, carbs: e.target.value})}
                       className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Fat (g)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Lemak (gram)</label>
                     <input 
                       type="number" 
+                      placeholder="0"
                       step="0.1"
                       min="0"
-                      value={manualForm.fat || ''}
-                      onChange={(e) => setManualForm({...manualForm, fat: Number(e.target.value)})}
+                      value={manualForm.fat}
+                      onChange={(e) => setManualForm({...manualForm, fat: e.target.value})}
                       className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                     />
                   </div>
@@ -624,20 +774,20 @@ export default function Dashboard({
                     className="rounded-sm border-slate-850 bg-slate-900 text-emerald-500 focus:ring-0 cursor-pointer"
                   />
                   <label htmlFor="saveToDatabase" className="text-xs text-slate-400 cursor-pointer">
-                    Save to My Foods Database (for instant future searches)
+                    Simpan ke Makanan Favorit (agar bisa dicari instan nanti)
                   </label>
                 </div>
 
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold py-2 rounded-lg transition-colors cursor-pointer text-sm"
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg transition-colors cursor-pointer text-sm"
                 >
-                  {isSubmitting ? 'Logging...' : 'Log Food Entry'}
+                  {isSubmitting ? 'Mencatat...' : 'Catat Makanan'}
                 </button>
               </form>
             ) : (
-              /* Hybrid Input Search and AI Generation Area */
+              /* Hybrid Input Search and AI Area */
               <div className="space-y-4">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -645,10 +795,10 @@ export default function Dashboard({
                   </div>
                   <input 
                     type="text" 
-                    placeholder='Type food name (e.g. "Mie Gacoan", "1 raw apple", "chicken breast bowl")...'
+                    placeholder="Contoh: '1 mangkok soto ayam pakai nasi' atau 'indomie goreng 1 bungkus'"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500 placeholder-slate-500 transition-colors"
+                    className="w-full bg-slate-955 border border-slate-850 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500 placeholder-slate-500 transition-colors"
                   />
                 </div>
 
@@ -656,8 +806,8 @@ export default function Dashboard({
                 {searchResults.length > 0 && (
                   <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 max-h-60 overflow-y-auto divide-y divide-slate-800/50 shadow-2xl">
                     <div className="px-2.5 py-1 text-slate-500 text-xs font-semibold flex items-center">
-                      <Database className="h-3 w-3 mr-1" />
-                      Matches in personal database
+                      <Database className="h-3 w-3 mr-1 text-emerald-500" />
+                      Ditemukan di makanan favorit Anda
                     </div>
                     {searchResults.map((food) => (
                       <button 
@@ -667,37 +817,37 @@ export default function Dashboard({
                       >
                         <div>
                           <span className="font-semibold text-slate-200">{food.food_name}</span>
-                          <span className="text-xs text-slate-500 ml-2">({food.base_serving_description})</span>
+                          <span className="text-xs text-slate-550 ml-2">({food.base_serving_description})</span>
                         </div>
                         <div className="text-xs text-slate-400 font-medium">
-                          {food.calories} kcal • P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
+                          {food.calories} kkal • P: {food.protein}g • K: {food.carbs}g • L: {food.fat}g
                         </div>
                       </button>
                     ))}
                   </div>
                 )}
 
-                {/* Displaying selected match portion adjuster */}
+                {/* Match selection display */}
                 {selectedSavedFood && (
                   <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="text-sm font-bold text-emerald-400">Library Food Match Found!</h4>
+                        <h4 className="text-sm font-bold text-emerald-400">Makanan Favorit Ditemukan!</h4>
                         <p className="text-xs text-slate-300 mt-0.5">
-                          Selected: <span className="font-semibold text-white">{selectedSavedFood.food_name}</span> ({selectedSavedFood.base_serving_description})
+                          Terpilih: <span className="font-semibold text-white">{selectedSavedFood.food_name}</span> ({selectedSavedFood.base_serving_description})
                         </p>
                       </div>
                       <button 
                         onClick={() => setSelectedSavedFood(null)} 
                         className="text-xs text-slate-400 hover:text-slate-200"
                       >
-                        Clear Selection
+                        Hapus Pilihan
                       </button>
                     </div>
 
                     <div className="flex items-center space-x-4">
                       <div className="flex-1">
-                        <label className="block text-xs font-semibold text-slate-400 mb-1">Portion Multiplier (e.g. 1.5x portion)</label>
+                        <label className="block text-xs font-semibold text-slate-450 mb-1">Sesuaikan Porsi Makanan</label>
                         <div className="flex items-center space-x-2">
                           <input 
                             type="range" 
@@ -716,40 +866,40 @@ export default function Dashboard({
                             onChange={(e) => setPortionMultiplier(Number(e.target.value))}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-center w-16 focus:outline-hidden"
                           />
-                          <span className="text-xs font-semibold text-slate-300">x portion</span>
+                          <span className="text-xs font-semibold text-slate-300">x porsi normal</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Portioned calculations preview */}
-                    <div className="bg-slate-950/80 border border-slate-900 rounded-lg p-3 text-xs flex justify-around text-slate-300">
-                      <div>Calories: <span className="font-bold text-white">{Math.round(selectedSavedFood.calories * portionMultiplier)} kcal</span></div>
-                      <div>P: <span className="font-bold text-rose-400">{Math.round(selectedSavedFood.protein * portionMultiplier * 10) / 10}g</span></div>
-                      <div>C: <span className="font-bold text-amber-400">{Math.round(selectedSavedFood.carbs * portionMultiplier * 10) / 10}g</span></div>
-                      <div>F: <span className="font-bold text-sky-400">{Math.round(selectedSavedFood.fat * portionMultiplier * 10) / 10}g</span></div>
+                    <div className="bg-slate-950/80 border border-slate-900 rounded-lg p-3 text-xs flex justify-around text-slate-350">
+                      <div>Kalori: <span className="font-bold text-white">{Math.round(selectedSavedFood.calories * portionMultiplier)} kkal</span></div>
+                      <div>P: <span className="font-bold text-rose-450">{Math.round(selectedSavedFood.protein * portionMultiplier * 10) / 10}g</span></div>
+                      <div>K: <span className="font-bold text-amber-450">{Math.round(selectedSavedFood.carbs * portionMultiplier * 10) / 10}g</span></div>
+                      <div>L: <span className="font-bold text-sky-450">{Math.round(selectedSavedFood.fat * portionMultiplier * 10) / 10}g</span></div>
                     </div>
 
                     <button 
                       onClick={handleAddSavedFood}
                       disabled={isSubmitting}
-                      className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold py-2 rounded-lg text-xs tracking-wide transition-colors cursor-pointer"
+                      className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-955 font-bold py-2 rounded-lg text-xs tracking-wide transition-colors cursor-pointer"
                     >
-                      {isSubmitting ? 'Logging...' : 'Log Portioned Library Food'}
+                      {isSubmitting ? 'Mencatat...' : 'Catat dengan Porsi Ini'}
                     </button>
                   </div>
                 )}
 
-                {/* If search result has no matches, suggest generating via DeepSeek AI */}
+                {/* Suggest AI calculation if no local matches */}
                 {searchTerm.trim() !== '' && !selectedSavedFood && (
                   <div className="flex items-center justify-between p-4 bg-slate-950 border border-slate-850 rounded-xl">
                     <div className="flex items-center space-x-3 pr-2">
-                      <Brain className="h-5 w-5 text-emerald-400" />
+                      <Brain className="h-5 w-5 text-emerald-400 shrink-0" />
                       <div>
-                        <div className="text-sm font-semibold text-slate-200">Parse with DeepSeek NLU</div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-sm font-semibold text-slate-200">Analisis Menu Makanan</div>
+                        <div className="text-xs text-slate-450">
                           {profile.role === 'free' 
-                            ? 'Uses Free daily request limit (1 per day).' 
-                            : 'Unlimited parsing using your configured API Key.'}
+                            ? 'Menggunakan 1 limit analisis harian gratis Anda.' 
+                            : 'Analisis menu tanpa batas dengan Kunci API Pro Anda.'}
                         </div>
                       </div>
                     </div>
@@ -761,12 +911,12 @@ export default function Dashboard({
                       {aiLoading ? (
                         <>
                           <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                          Analyzing...
+                          Menganalisis...
                         </>
                       ) : (
                         <>
                           <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                          Generate with AI
+                          Analisis Otomatis
                         </>
                       )}
                     </button>
@@ -775,12 +925,12 @@ export default function Dashboard({
               </div>
             )}
 
-            {/* AI NLU Review Panel */}
+            {/* AI Review Panel */}
             {aiError && (
               <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl text-rose-400 text-xs flex items-start space-x-2">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">AI Parsing Error: </span>
+                  <span className="font-bold">Analisis Gagal: </span>
                   {aiError}
                 </div>
               </div>
@@ -790,50 +940,50 @@ export default function Dashboard({
               <div className="bg-slate-950 border border-emerald-500/20 p-5 rounded-xl space-y-4">
                 <div className="flex justify-between items-start border-b border-slate-850 pb-3">
                   <div>
-                    <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400">AI Parsed Result</span>
+                    <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400">Hasil Analisis Menu</span>
                     <h4 className="text-md font-bold text-white mt-0.5">{aiResult.food_name}</h4>
                   </div>
                   <button 
                     onClick={() => setAiResult(null)} 
                     className="text-xs text-slate-400 hover:text-slate-200"
                   >
-                    Discard
+                    Batalkan
                   </button>
                 </div>
 
                 {/* Ingredients table breakdown */}
                 <div className="space-y-2">
-                  <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Parsed Ingredients</div>
+                  <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Bahan Makanan yang Terdeteksi</div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="text-slate-500 border-b border-slate-900">
-                          <th className="pb-1.5 font-semibold">Ingredient</th>
-                          <th className="pb-1.5 font-semibold text-right">Est. Weight</th>
-                          <th className="pb-1.5 font-semibold text-right">Calories</th>
+                        <tr className="text-slate-550 border-b border-slate-900">
+                          <th className="pb-1.5 font-semibold">Bahan</th>
+                          <th className="pb-1.5 font-semibold text-right">Perkiraan Berat</th>
+                          <th className="pb-1.5 font-semibold text-right">Kalori</th>
                           <th className="pb-1.5 font-semibold text-right">Protein</th>
-                          <th className="pb-1.5 font-semibold text-right">Carbs</th>
-                          <th className="pb-1.5 font-semibold text-right">Fat</th>
+                          <th className="pb-1.5 font-semibold text-right">Karbohidrat</th>
+                          <th className="pb-1.5 font-semibold text-right">Lemak</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-900">
                         {aiResult.parsed_ingredients.map((ing, i) => (
                           <tr key={i} className="text-slate-300">
                             <td className="py-2 text-slate-200 font-medium">{ing.ingredient_name}</td>
-                            <td className="py-2 text-right text-slate-400">{ing.estimated_grams}g</td>
-                            <td className="py-2 text-right">{ing.calories} kcal</td>
-                            <td className="py-2 text-right text-rose-400">{ing.protein}g</td>
-                            <td className="py-2 text-right text-amber-400">{ing.carbs}g</td>
-                            <td className="py-2 text-right text-sky-400">{ing.fat}g</td>
+                            <td className="py-2 text-right text-slate-500">{ing.estimated_grams}g</td>
+                            <td className="py-2 text-right">{ing.calories} kkal</td>
+                            <td className="py-2 text-right text-rose-450">{ing.protein}g</td>
+                            <td className="py-2 text-right text-amber-450">{ing.carbs}g</td>
+                            <td className="py-2 text-right text-sky-450">{ing.fat}g</td>
                           </tr>
                         ))}
                         <tr className="font-bold text-white border-t border-slate-800">
-                          <td className="py-2 text-emerald-400">Total</td>
+                          <td className="py-2 text-emerald-400">Total Nutrisi</td>
                           <td className="py-2 text-right"></td>
-                          <td className="py-2 text-right text-emerald-400">{aiResult.total_calories} kcal</td>
-                          <td className="py-2 text-right text-rose-400">{aiResult.total_protein}g</td>
-                          <td className="py-2 text-right text-amber-400">{aiResult.total_carbs}g</td>
-                          <td className="py-2 text-right text-sky-400">{aiResult.total_fat}g</td>
+                          <td className="py-2 text-right text-emerald-400">{aiResult.total_calories} kkal</td>
+                          <td className="py-2 text-right text-rose-450">{aiResult.total_protein}g</td>
+                          <td className="py-2 text-right text-amber-450">{aiResult.total_carbs}g</td>
+                          <td className="py-2 text-right text-sky-450">{aiResult.total_fat}g</td>
                         </tr>
                       </tbody>
                     </table>
@@ -849,9 +999,16 @@ export default function Dashboard({
                     className="rounded-sm border-slate-850 bg-slate-900 text-emerald-500 focus:ring-0 cursor-pointer"
                   />
                   <label htmlFor="aiSaveToLib" className="text-xs text-slate-400 cursor-pointer">
-                    Save this food to my library for instant portions next time (no AI limit cost)
+                    Simpan makanan ini ke daftar makanan favorit saya
                   </label>
                 </div>
+
+                {/* Token notification */}
+                {aiResult.tokens_spent && aiResult.tokens_spent > 0 && (
+                  <div className="text-[10px] text-cyan-400 font-mono">
+                    * Analisis menghabiskan {aiResult.tokens_spent} token API.
+                  </div>
+                )}
 
                 <div className="flex space-x-3 pt-2">
                   <button 
@@ -859,7 +1016,7 @@ export default function Dashboard({
                     disabled={isSubmitting}
                     className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg text-xs tracking-wider transition-colors cursor-pointer"
                   >
-                    {isSubmitting ? 'Saving...' : 'Confirm and Log Daily Entry'}
+                    {isSubmitting ? 'Menyimpan...' : 'Konfirmasi & Masukkan ke Buku Harian'}
                   </button>
                 </div>
               </div>
@@ -871,16 +1028,16 @@ export default function Dashboard({
             <div>
               <h3 className="text-md font-bold text-slate-100 flex items-center">
                 <Activity className="h-5 w-5 text-emerald-400 mr-2" />
-                Logged Foods - {selectedDate}
+                Buku Harian Makanan Anda - {selectedDate}
               </h3>
-              <p className="text-xs text-slate-400">Items eaten and recorded today</p>
+              <p className="text-xs text-slate-400">Makanan yang telah dicatat hari ini</p>
             </div>
 
             {foodEntries.length === 0 ? (
               <div className="text-center py-8 bg-slate-950/40 border border-slate-900 border-dashed rounded-xl">
-                <Database className="h-8 w-8 text-slate-650 mx-auto mb-2" />
-                <p className="text-sm text-slate-400 font-medium">No food logs recorded for this day.</p>
-                <p className="text-xs text-slate-500 mt-0.5">Use the search box above to start tracking!</p>
+                <Database className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                <p className="text-sm text-slate-400 font-medium">Belum ada makanan yang dicatat hari ini.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Tulis makananmu di kolom pencarian di atas untuk memulai!</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-900 bg-slate-950/40 border border-slate-900 rounded-xl overflow-hidden">
@@ -890,17 +1047,17 @@ export default function Dashboard({
                       <span className="text-sm font-semibold text-slate-200">{entry.raw_input}</span>
                       <div className="flex items-center space-x-3 flex-wrap text-xs text-slate-400">
                         <span className="bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 font-medium text-emerald-400">
-                          {entry.calories} kcal
+                          {entry.calories} kkal
                         </span>
                         <span>P: {entry.protein}g</span>
-                        <span>C: {entry.carbs}g</span>
-                        <span>F: {entry.fat}g</span>
+                        <span>K: {entry.carbs}g</span>
+                        <span>L: {entry.fat}g</span>
                       </div>
                     </div>
                     <button
                       onClick={() => handleDeleteEntry(entry.id)}
-                      className="text-slate-500 hover:text-rose-400 p-2 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Entry"
+                      className="text-slate-550 hover:text-rose-455 p-2 rounded-lg transition-colors cursor-pointer"
+                      title="Hapus Catatan"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -917,14 +1074,14 @@ export default function Dashboard({
             <div>
               <h3 className="text-md font-bold text-slate-100 flex items-center">
                 <Database className="h-5 w-5 text-emerald-400 mr-2" />
-                Saved Foods Library
+                Makanan Favorit Tersimpan
               </h3>
-              <p className="text-xs text-slate-400">Personal database for fast portion multipliers (zero AI cost)</p>
+              <p className="text-xs text-slate-400">Mencatat ulang makanan terdaftar tanpa menghabiskan kuota harian gratis</p>
             </div>
 
             {savedFoods.length === 0 ? (
-              <div className="text-center py-6 bg-slate-950/30 border border-slate-900 rounded-xl">
-                <span className="text-xs text-slate-500">Your custom library is empty. Log a food via AI and save it to add ingredients here!</span>
+              <div className="text-center py-6 bg-slate-950/30 border border-slate-900 rounded-xl px-4">
+                <span className="text-xs text-slate-500">Daftar favorit Anda masih kosong. Cari makanan via kolom pencarian, lalu simpan ke favorit!</span>
               </div>
             ) : (
               <div className="space-y-3 max-h-120 overflow-y-auto pr-1">
@@ -939,7 +1096,7 @@ export default function Dashboard({
                     <div className="grid grid-cols-4 gap-2 mt-3 pt-2.5 border-t border-slate-900 text-center text-[10px] font-semibold text-slate-400">
                       <div>
                         <div className="text-slate-300 font-bold">{food.calories}</div>
-                        <div>kcal</div>
+                        <div>kkal</div>
                       </div>
                       <div>
                         <div className="text-rose-400 font-bold">{food.protein}g</div>
@@ -947,11 +1104,11 @@ export default function Dashboard({
                       </div>
                       <div>
                         <div className="text-amber-400 font-bold">{food.carbs}g</div>
-                        <div>Carbs</div>
+                        <div>Karbo</div>
                       </div>
                       <div>
                         <div className="text-sky-400 font-bold">{food.fat}g</div>
-                        <div>Fat</div>
+                        <div>Lemak</div>
                       </div>
                     </div>
                   </div>
@@ -968,87 +1125,90 @@ export default function Dashboard({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
             <div>
-              <h3 className="text-lg font-bold text-white">Recalculate Macros Target</h3>
-              <p className="text-xs text-slate-450 mt-0.5">Calculates resting BMR & TDEE using Mifflin-St Jeor equation</p>
+              <h3 className="text-lg font-bold text-white">Ubah Profil & Target Tubuh</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Atur ulang kalkulasi kalori harian Mifflin-St Jeor Anda</p>
             </div>
 
             <form onSubmit={handleRecalculate} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-350 mb-1">Gender</label>
+                <label className="block text-xs font-semibold text-slate-350 mb-1">Jenis Kelamin</label>
                 <select 
                   value={recalcForm.gender}
                   onChange={(e) => setRecalcForm({...recalcForm, gender: e.target.value})}
-                  className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                 >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
+                  <option value="male">Laki-laki</option>
+                  <option value="female">Perempuan</option>
                 </select>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-350 mb-1">Weight (kg)</label>
+                  <label className="block text-xs font-semibold text-slate-350 mb-1">Berat (kg)</label>
                   <input 
                     type="number" 
                     required
                     min="30"
                     max="300"
+                    placeholder="70"
                     value={recalcForm.weight}
-                    onChange={(e) => setRecalcForm({...recalcForm, weight: Number(e.target.value)})}
+                    onChange={(e) => setRecalcForm({...recalcForm, weight: e.target.value})}
                     className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-350 mb-1">Height (cm)</label>
+                  <label className="block text-xs font-semibold text-slate-350 mb-1">Tinggi (cm)</label>
                   <input 
                     type="number" 
                     required
                     min="100"
                     max="250"
+                    placeholder="170"
                     value={recalcForm.height}
-                    onChange={(e) => setRecalcForm({...recalcForm, height: Number(e.target.value)})}
+                    onChange={(e) => setRecalcForm({...recalcForm, height: e.target.value})}
                     className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-350 mb-1">Age (years)</label>
+                  <label className="block text-xs font-semibold text-slate-350 mb-1">Umur (tahun)</label>
                   <input 
                     type="number" 
                     required
                     min="10"
                     max="120"
+                    placeholder="25"
                     value={recalcForm.age}
-                    onChange={(e) => setRecalcForm({...recalcForm, age: Number(e.target.value)})}
+                    onChange={(e) => setRecalcForm({...recalcForm, age: e.target.value})}
                     className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-350 mb-1">Activity Level multiplier</label>
+                <label className="block text-xs font-semibold text-slate-350 mb-1">Tingkat Aktivitas Harian</label>
                 <select 
                   value={recalcForm.activityLevel}
                   onChange={(e) => setRecalcForm({...recalcForm, activityLevel: Number(e.target.value)})}
                   className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                 >
-                  <option value={1.2}>Sedentary (no active exercise, desk job)</option>
-                  <option value={1.375}>Lightly Active (light exercise 1-3 days/wk)</option>
-                  <option value={1.55}>Moderately Active (moderate exercise 3-5 days/wk)</option>
-                  <option value={1.725}>Very Active (hard exercise 6-7 days/wk)</option>
-                  <option value={1.9}>Extra Active (intense athlete / physical job)</option>
+                  <option value={1.2}>Sangat Jarang Olahraga (Kerja kantoran di meja)</option>
+                  <option value={1.375}>Olahraga Ringan (Jalan kaki/olahraga 1-3 hari/minggu)</option>
+                  <option value={1.55}>Aktif Sedang (Olahraga teratur 3-5 hari/minggu)</option>
+                  <option value={1.725}>Sangat Aktif (Latihan berat/olahraga harian 6-7 hari/minggu)</option>
+                  <option value={1.9}>Atlet / Pekerja Fisik Berat (Latihan berat 2x sehari)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-350 mb-1">Fitness Goal</label>
+                <label className="block text-xs font-semibold text-slate-350 mb-1">Target Kebugaran</label>
                 <select 
                   value={recalcForm.goal}
                   onChange={(e) => setRecalcForm({...recalcForm, goal: e.target.value})}
                   className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
                 >
-                  <option value="lose">Weight Loss (-500 kcal deficit)</option>
-                  <option value="maintain">Weight Maintenance (TDEE baseline)</option>
-                  <option value="gain">Muscle Gain (+300 kcal surplus)</option>
+                  <option value="lose">Menurunkan Berat Badan (-500 kkal)</option>
+                  <option value="maintain">Menjaga Berat Badan (Kalori seimbang)</option>
+                  <option value="gain">Meningkatkan Massa Otot (+300 kkal)</option>
                 </select>
               </div>
 
@@ -1058,14 +1218,14 @@ export default function Dashboard({
                   onClick={() => setShowRecalculate(false)}
                   className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 font-semibold py-2.5 rounded-lg text-sm cursor-pointer"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg text-sm cursor-pointer"
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-955 font-bold py-2.5 rounded-lg text-sm cursor-pointer"
                 >
-                  {isSubmitting ? 'Calculating...' : 'Recalculate & Save'}
+                  {isSubmitting ? 'Menghitung...' : 'Simpan Perubahan'}
                 </button>
               </div>
             </form>
@@ -1080,12 +1240,11 @@ export default function Dashboard({
             <div>
               <h3 className="text-lg font-bold text-white flex items-center">
                 <Key className="h-5 w-5 text-cyan-400 mr-2" />
-                Configure DeepSeek API Key
+                Kunci API Mandiri (Pro)
               </h3>
               <p className="text-xs text-slate-450 mt-1">
-                Your account is set to <span className="text-cyan-400 font-bold">Pro Tier (BYOK)</span>.
-                Your key will be stored securely only in your browser&apos;s <span className="font-mono text-cyan-455">localStorage</span>.
-                It is never sent or stored in the database.
+                Kunci API disimpan secara aman di dalam <span className="font-mono text-cyan-400">localStorage</span> browser Anda.
+                Kunci ini tidak akan pernah dikirimkan atau disimpan ke database kami.
               </p>
             </div>
 
@@ -1105,9 +1264,9 @@ export default function Dashboard({
                 <button 
                   type="button" 
                   onClick={() => setShowApiKeyModal(false)}
-                  className="flex-1 bg-slate-850 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold py-2.5 rounded-lg text-sm cursor-pointer"
+                  className="flex-1 bg-slate-850 hover:bg-slate-800 border border-slate-850 text-slate-300 font-semibold py-2.5 rounded-lg text-sm cursor-pointer"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button 
                   type="button" 
@@ -1117,7 +1276,7 @@ export default function Dashboard({
                   }}
                   className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-lg text-sm cursor-pointer"
                 >
-                  Save Key
+                  Simpan Kunci
                 </button>
               </div>
             </div>
