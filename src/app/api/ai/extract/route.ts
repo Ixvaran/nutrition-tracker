@@ -74,13 +74,13 @@ The user now wants to revise or apply corrections/changes to this parsing.
 Revision Instruction: "${revisionPrompt}"
 
 Apply this revision. Modify, add, or delete the ingredients in the list accordingly. Estimate or recalculate serving weights and nutritional values: calories, protein (g), carbs (g), fat (g).
-IMPORTANT MACRONUTRIENT MATH RULES:
+IMPORTANT NARRATIVE & MATH RULES:
 - Protein and Carbs contain 4 calories per gram.
 - Fat contains 9 calories per gram.
 - For each ingredient, the "calories" field MUST be calculated exactly as: Math.round(protein * 4 + carbs * 4 + fat * 9). Do NOT output any other value.
 - The "total_calories" MUST be exactly equal to the sum of the calories of all individual ingredients.
-- Keep numbers as decimals where appropriate.
-- Your "analysis_thoughts" narrative MUST match this math exactly! If you state that an ingredient has specific macro grams, the calorie count mentioned in your text must match the formula (protein * 4 + carbs * 4 + fat * 9) exactly. Do NOT invent arbitrary calories in your narrative that contradict the formula.
+- Do NOT write mathematical equations, calculations, formulas, or step-by-step addition (e.g., "333 + 230 + 15 = 578" or "22.5 * 4 = 90") in the "analysis_thoughts" narrative. The user can see the numeric table for that.
+- Keep the "analysis_thoughts" narrative focused on: (1) a friendly explanation of the food items and their revisions, (2) the sources of the nutrients (e.g., which ingredients contribute protein, carbs, or fats), and (3) strict culinary accuracy (e.g., Gulai Tikungan or Gultik is a legendary dish from Solo, Central Java, NOT Minangkabau/Minang. Ensure you verify the region of origin for Indonesian traditional foods).
 
 Your output must also include a clear nutritional explanation of the changes in "analysis_thoughts" (written in friendly Indonesian) and the references or databases used in "sources" (e.g., USDA FoodData Central, Panganku.org, Kemenkes, or nutritional estimates).
 
@@ -95,13 +95,13 @@ Your output must be a valid JSON object matching the exact same structure.`
         role: 'system',
         content: `You are an expert nutritionist and data parser. Convert raw qualitative food descriptions into structured ingredients.
 For each ingredient, you must estimate the serving weight in grams, and calculate nutritional values: calories, protein (g), carbs (g), fat (g).
-IMPORTANT MACRONUTRIENT MATH RULES:
+IMPORTANT NARRATIVE & MATH RULES:
 - Protein and Carbs contain 4 calories per gram.
 - Fat contains 9 calories per gram.
 - For each ingredient, the "calories" field MUST be calculated exactly as: Math.round(protein * 4 + carbs * 4 + fat * 9). Do NOT output any other value.
 - The "total_calories" MUST be exactly equal to the sum of the calories of all individual ingredients.
-- Keep numbers as decimals where appropriate.
-- Your "analysis_thoughts" narrative MUST match this math exactly! If you state that an ingredient has specific macro grams, the calorie count mentioned in your text must match the formula (protein * 4 + carbs * 4 + fat * 9) exactly. Do NOT invent arbitrary calories in your narrative that contradict the formula.
+- Do NOT write mathematical equations, calculations, formulas, or step-by-step addition (e.g., "333 + 230 + 15 = 578" or "22.5 * 4 = 90") in the "analysis_thoughts" narrative. The user can see the numeric table for that.
+- Keep the "analysis_thoughts" narrative focused on: (1) a friendly explanation of the food items, (2) the sources of the nutrients (e.g., which ingredients contribute protein, carbs, or fats), and (3) strict culinary accuracy (e.g., Gulai Tikungan or Gultik is a legendary dish from Solo, Central Java, NOT Minangkabau/Minang. Ensure you verify the region of origin for Indonesian traditional foods).
 
 Your output must also include a clear breakdown of your nutritional analysis thought process/explanation in "analysis_thoughts" (written in Indonesian, describing how weights, protein, and calories were calculated based on the description) and the database sources or reference guidelines used in "sources" (an array of strings, e.g., USDA FoodData Central, Panganku, Kemenkes RI, etc.).
 
