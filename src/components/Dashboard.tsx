@@ -1362,6 +1362,48 @@ export default function Dashboard({
                   </div>
                 </div>
 
+                {/* AI Thoughts and Sources Explanation */}
+                {(aiResult.analysis_thoughts || (aiResult.sources && aiResult.sources.length > 0)) && (
+                  <div className={`p-4 rounded-2xl border-2 space-y-3 transition-colors ${
+                    isLight ? 'bg-lime-50/30 border-lime-400/30' : 'bg-lime-400/5 border-lime-500/10'
+                  }`}>
+                    {aiResult.analysis_thoughts && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-lime-700 dark:text-lime-450 flex items-center">
+                          <Brain className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                          Analisis & Pemikiran AI:
+                        </span>
+                        <p className={`text-xs font-semibold leading-relaxed ${isLight ? 'text-slate-800' : 'text-slate-300'}`}>
+                          {aiResult.analysis_thoughts}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {aiResult.sources && aiResult.sources.length > 0 && (
+                      <div className="space-y-1 pt-1.5 border-t border-dashed border-lime-400/20 dark:border-lime-500/15">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-lime-700 dark:text-lime-455 flex items-center">
+                          <Database className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                          Sumber Data Referensi:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {aiResult.sources.map((src, sIdx) => (
+                            <span 
+                              key={sIdx} 
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${
+                                isLight 
+                                  ? 'bg-white border-slate-300 text-slate-800 shadow-2xs' 
+                                  : 'bg-[#121824] border-slate-800 text-slate-400'
+                              }`}
+                            >
+                              {src}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* AI Revision Prompt Section */}
                 <div className={`p-4 rounded-2xl border-2 space-y-2 mt-4 transition-colors ${
                   isLight ? 'bg-slate-100 border-slate-350' : 'bg-slate-900/40 border-slate-900'

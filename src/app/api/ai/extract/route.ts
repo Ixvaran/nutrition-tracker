@@ -80,6 +80,8 @@ IMPORTANT MACRONUTRIENT MATH RULES:
 - For each ingredient and for the total, the calories MUST equal exactly: (protein * 4) + (carbs * 4) + (fat * 9). Adjust the values slightly if needed to satisfy this mathematical relation precisely.
 - Keep numbers as decimals where appropriate, but round total calories to the nearest integer.
 
+Your output must also include a clear nutritional explanation of the changes in "analysis_thoughts" (written in friendly Indonesian) and the references or databases used in "sources" (e.g., USDA FoodData Central, Panganku.org, Kemenkes, or nutritional estimates).
+
 Your output must be a valid JSON object matching the exact same structure.`
       })
       messages.push({
@@ -97,6 +99,8 @@ IMPORTANT MACRONUTRIENT MATH RULES:
 - For each ingredient and for the total, the calories MUST equal exactly: (protein * 4) + (carbs * 4) + (fat * 9). Adjust the values slightly if needed to satisfy this mathematical relation precisely.
 - Keep numbers as decimals where appropriate, but round total calories to the nearest integer.
 
+Your output must also include a clear breakdown of your nutritional analysis thought process/explanation in "analysis_thoughts" (written in Indonesian, describing how weights, protein, and calories were calculated based on the description) and the database sources or reference guidelines used in "sources" (an array of strings, e.g., USDA FoodData Central, Panganku, Kemenkes RI, etc.).
+
 Your output must be a valid JSON object matching the following structure:
 {
   "food_name": "General description name of the logged food",
@@ -113,7 +117,9 @@ Your output must be a valid JSON object matching the following structure:
   "total_calories": 240,
   "total_protein": 37.5,
   "total_carbs": 0,
-  "total_fat": 10
+  "total_fat": 10,
+  "analysis_thoughts": "Penjelasan singkat mengenai analisis takaran saji dan nutrisi dari makanan tersebut.",
+  "sources": ["USDA FoodData Central", "Kalkulasi Estimasi Nutrisi"]
 }`
       })
       messages.push({

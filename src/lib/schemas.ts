@@ -29,6 +29,8 @@ export const aiExtractionResponseSchema = z.object({
   total_protein: z.number().min(0),
   total_carbs: z.number().min(0),
   total_fat: z.number().min(0),
+  analysis_thoughts: z.string().optional(),
+  sources: z.array(z.string()).optional()
 })
 
 export type AIExtractionResponse = z.infer<typeof aiExtractionResponseSchema>
