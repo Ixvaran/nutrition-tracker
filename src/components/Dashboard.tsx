@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  Activity, Plus, Trash2, Search, Brain, Key, 
-  RefreshCw, LogOut, Check, Sparkles, User, Database, Dumbbell, AlertTriangle 
+  Activity, Plus, Trash2, Search, Brain, Key, Sun, Moon,
+  RefreshCw, LogOut, Check, Sparkles, User, Database, Dumbbell, AlertTriangle, 
+  Home, Sliders, FileText, Settings, Heart, Flame, Footprints, Droplets
 } from 'lucide-react'
 import { 
   recalculateMacros, addFoodEntry, deleteFoodEntry, 
@@ -69,6 +70,9 @@ export default function Dashboard({
 }: DashboardProps) {
   const router = useRouter()
   
+  // Theme state: 'light' | 'dark'
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
   // State variables
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState<SavedFood[]>([])
@@ -111,31 +115,30 @@ export default function Dashboard({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  // Load API Key from localStorage on mount
+  // Load API Key and Theme from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const key = localStorage.getItem('deepseek_api_key') || ''
       setCustomApiKey(key)
+
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' || 'light'
+      setTheme(savedTheme)
     }
   }, [])
-
-  // If user is onboarded, initialize recalculate form with their actual DB values
-  useEffect(() => {
-    if (profile.has_onboarded) {
-      // Find weight/height/age or keep defaults
-      setRecalcForm(prev => ({
-        ...prev,
-        // Fallbacks since DB only saves targets, BMR inputs themselves aren't stored
-      }))
-    }
-  }, [profile])
 
   // Save API Key to localStorage
   const handleSaveApiKey = (key: string) => {
     localStorage.setItem('deepseek_api_key', key)
     setCustomApiKey(key)
     setShowApiKeyModal(false)
-    setStatusMessage({ type: 'success', text: 'API Key berhasil disimpan di browser Anda.' })
+    setStatusMessage({ type: 'success', text: 'Kunci API berhasil disimpan secara lokal.' })
+  }
+
+  // Toggle theme action
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light'
+    localStorage.setItem('theme', nextTheme)
+    setTheme(nextTheme)
   }
 
   // Handle autocomplete search
@@ -169,7 +172,7 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: 'Target kalori dan nutrisi berhasil diperbarui!' })
+      setStatusMessage({ type: 'success', text: 'Kalkulasi target energi dan nutrisi berhasil disimpan!' })
       setShowRecalculate(false)
       router.refresh()
     }
@@ -203,7 +206,7 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: `Berhasil mencatat ${selectedSavedFood.food_name} (${portionMultiplier}x porsi)` })
+      setStatusMessage({ type: 'success', text: `Telah mencatat ${selectedSavedFood.food_name} (${portionMultiplier}x porsi)` })
       setSearchTerm('')
       setSelectedSavedFood(null)
       setPortionMultiplier(1.0)
@@ -240,7 +243,7 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: `Berhasil mencatat "${manualForm.food_name}" ke buku harian` })
+      setStatusMessage({ type: 'success', text: `Telah mencatat "${manualForm.food_name}" ke buku harian` })
       setManualForm({
         food_name: '',
         calories: '',
@@ -290,7 +293,7 @@ export default function Dashboard({
 
       setAiResult(data)
     } catch (err: any) {
-      setAiError(err.message || 'Terjadi kesalahan saat menghubungkan ke sistem analisis.')
+      setAiError(err.message || 'Terjadi kesalahan saat menghubungkan ke asisten analisis.')
     } finally {
       setAiLoading(false)
     }
@@ -317,7 +320,7 @@ export default function Dashboard({
     if (res.error) {
       setStatusMessage({ type: 'error', text: res.error })
     } else {
-      setStatusMessage({ type: 'success', text: `Berhasil mencatat "${aiResult.food_name}" ke buku harian` })
+      setStatusMessage({ type: 'success', text: `Telah mencatat "${aiResult.food_name}" ke buku harian` })
       setAiResult(null)
       setSearchTerm('')
       router.refresh()
@@ -368,30 +371,30 @@ export default function Dashboard({
   // ==========================================
   if (!profile.has_onboarded) {
     return (
-      <div className="min-h-screen bg-radial from-slate-900 via-slate-955 to-black text-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg bg-slate-900/80 border border-slate-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden backdrop-blur-md">
-          <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="min-h-screen bg-radial from-slate-100 via-slate-200 to-slate-300 text-slate-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-lg bg-white border border-slate-200 p-8 rounded-3xl shadow-xl relative overflow-hidden">
+          <div className="absolute -top-24 -left-24 w-48 h-48 bg-lime-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="h-14 w-14 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center border border-emerald-500/20 mb-4">
+            <div className="h-14 w-14 rounded-2xl bg-lime-400/20 text-lime-600 flex items-center justify-center border border-lime-400/30 mb-4">
               <Dumbbell className="h-8 w-8" />
             </div>
-            <h2 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
-              Halo! Mari Atur Target Kalori & Nutrisimu
+            <h2 className="text-2xl font-black tracking-tight text-slate-900">
+              Halo! Mari Atur Target Tubuhmu
             </h2>
-            <p className="text-xs text-slate-400 mt-2 max-w-sm">
-              Sebelum mulai mencatat makanan, kami perlu sedikit info tentang tubuhmu untuk menghitung kebutuhan nutrisi harianmu secara akurat.
+            <p className="text-xs text-slate-500 mt-2 max-w-sm leading-relaxed">
+              Sebelum mencatat makanan, kami perlu sedikit info tubuh Anda untuk menghitung kebutuhan energi harian secara otomatis.
             </p>
           </div>
 
           <form onSubmit={handleRecalculate} className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Jenis Kelamin</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Jenis Kelamin</label>
               <select 
                 value={recalcForm.gender}
                 onChange={(e) => setRecalcForm({...recalcForm, gender: e.target.value})}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 focus:outline-hidden focus:border-lime-500 transition-colors"
               >
                 <option value="male">Laki-laki</option>
                 <option value="female">Perempuan</option>
@@ -400,7 +403,7 @@ export default function Dashboard({
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Berat (kg)</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Berat (kg)</label>
                 <input 
                   type="number" 
                   required
@@ -409,11 +412,11 @@ export default function Dashboard({
                   max="300"
                   value={recalcForm.weight}
                   onChange={(e) => setRecalcForm({...recalcForm, weight: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-850 focus:outline-hidden focus:border-lime-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tinggi (cm)</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tinggi (cm)</label>
                 <input 
                   type="number" 
                   required
@@ -422,11 +425,11 @@ export default function Dashboard({
                   max="250"
                   value={recalcForm.height}
                   onChange={(e) => setRecalcForm({...recalcForm, height: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-850 focus:outline-hidden focus:border-lime-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Umur (tahun)</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Umur (tahun)</label>
                 <input 
                   type="number" 
                   required
@@ -435,32 +438,32 @@ export default function Dashboard({
                   max="120"
                   value={recalcForm.age}
                   onChange={(e) => setRecalcForm({...recalcForm, age: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-850 focus:outline-hidden focus:border-lime-500 transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tingkat Aktivitas Harian</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tingkat Aktivitas Harian</label>
               <select 
                 value={recalcForm.activityLevel}
                 onChange={(e) => setRecalcForm({...recalcForm, activityLevel: Number(e.target.value)})}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 focus:outline-hidden focus:border-lime-500 transition-colors"
               >
                 <option value={1.2}>Sangat Jarang Olahraga (Kerja kantoran di meja)</option>
-                <option value={1.375}>Olahraga Ringan (Jalan kaki/olahraga 1-3 hari/minggu)</option>
+                <option value={1.375}>Olahraga Ringan (Olahraga 1-3 hari/minggu)</option>
                 <option value={1.55}>Aktif Sedang (Olahraga teratur 3-5 hari/minggu)</option>
-                <option value={1.725}>Sangat Aktif (Latihan berat/olahraga harian 6-7 hari/minggu)</option>
-                <option value={1.9}>Atlet / Pekerja Fisik Berat (Latihan berat 2x sehari)</option>
+                <option value={1.725}>Sangat Aktif (Olahraga harian 6-7 hari/minggu)</option>
+                <option value={1.9}>Atlet / Pekerja Fisik Berat (Kerja fisik berat)</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Target Kebugaran Anda</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Target Kebugaran</label>
               <select 
                 value={recalcForm.goal}
                 onChange={(e) => setRecalcForm({...recalcForm, goal: e.target.value})}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 focus:outline-hidden focus:border-lime-500 transition-colors"
               >
                 <option value="lose">Menurunkan Berat Badan (-500 kalori)</option>
                 <option value="maintain">Menjaga Berat Badan (Kalori seimbang)</option>
@@ -471,9 +474,9 @@ export default function Dashboard({
             <button 
               type="submit" 
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 disabled:opacity-50 text-black font-extrabold py-3.5 rounded-xl text-sm transition-all cursor-pointer shadow-lg shadow-emerald-950/20 mt-4"
+              className="w-full bg-lime-400 hover:bg-lime-500 disabled:opacity-50 text-black font-extrabold py-4 rounded-2xl text-sm transition-all cursor-pointer shadow-lg shadow-lime-950/10 mt-4"
             >
-              {isSubmitting ? 'Menghitung Kalori...' : 'Hitung Target Kebutuhan Kalori Saya'}
+              {isSubmitting ? 'Menghitung Target...' : 'Hitung Target Kebutuhan Kalori'}
             </button>
           </form>
         </div>
@@ -482,29 +485,41 @@ export default function Dashboard({
   }
 
   // ==========================================
-  // NORMAL DASHBOARD VIEW
+  // NORMAL OVERHAULED DASHBOARD VIEW
   // ==========================================
+  const isLight = theme === 'light'
+  
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className={`min-h-screen transition-colors duration-300 pb-32 font-sans ${
+      isLight ? 'bg-[#f4f7f2] text-slate-900' : 'bg-[#0b0f17] text-slate-100'
+    }`}>
       {/* Header */}
-      <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
+      <header className={`border-b sticky top-0 z-40 backdrop-blur-md transition-colors ${
+        isLight ? 'border-slate-200/60 bg-white/80' : 'border-slate-900 bg-[#0e1320]/80'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-              <Activity className="h-5 w-5" />
+          <div className="flex items-center space-x-3.5">
+            <div className={`h-11 w-11 rounded-2xl flex items-center justify-center border transition-all ${
+              isLight ? 'bg-lime-400/10 text-lime-650 border-lime-450/20' : 'bg-lime-400/20 text-lime-400 border-lime-400/30'
+            }`}>
+              <Activity className="h-5 w-5 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+              <h1 className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 via-lime-550 to-teal-500">
                 NutriFit
               </h1>
-              <p className="text-xs text-slate-400">Buku Harian Kesehatan Makanan</p>
+              <p className={`text-[10px] uppercase font-bold tracking-widest ${
+                isLight ? 'text-slate-400' : 'text-slate-550'
+              }`}>Buku Harian Kesehatan Makanan</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-3">
             {profile.username && (
-              <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-300">
-                <User className="h-3.5 w-3.5 text-emerald-400" />
+              <div className={`flex items-center space-x-2 border rounded-full px-4 py-2 text-xs font-bold transition-all ${
+                isLight ? 'bg-slate-100 border-slate-200 text-slate-700' : 'bg-slate-900 border-slate-800 text-slate-300'
+              }`}>
+                <User className="h-3.5 w-3.5 text-lime-500" />
                 <span>Hai, {profile.username}</span>
               </div>
             )}
@@ -514,51 +529,27 @@ export default function Dashboard({
               type="date" 
               value={selectedDate}
               onChange={(e) => router.push(`/?date=${e.target.value}`)}
-              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500 cursor-pointer"
+              className={`border rounded-2xl px-4 py-2 text-xs font-bold focus:outline-hidden transition-all ${
+                isLight ? 'bg-slate-100 border-slate-200 text-slate-700 focus:border-lime-550' : 'bg-slate-900 border-slate-800 text-slate-300 focus:border-lime-500'
+              }`}
             />
 
-            {/* Role indicator / settings switcher */}
-            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-lg p-1">
-              <button 
-                onClick={handleToggleRole}
-                className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-all ${
-                  profile.role === 'free' 
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Beralih ke Paket Gratis (Limit Harian)"
-              >
-                Gratis
-              </button>
-              <button 
-                onClick={handleToggleRole}
-                className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-all ${
-                  profile.role === 'pro' 
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Beralih ke Paket Mandiri (BYOK)"
-              >
-                Pro
-              </button>
-            </div>
-
-            {profile.role === 'pro' && (
-              <button
-                onClick={() => setShowApiKeyModal(true)}
-                className="bg-slate-900 hover:bg-slate-855 border border-slate-800 text-slate-300 p-2 rounded-lg transition-colors relative cursor-pointer"
-                title="Atur Kunci API Mandiri"
-              >
-                <Key className="h-4 w-4" />
-                {!customApiKey && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse" />
-                )}
-              </button>
-            )}
+            {/* Theme Switcher Button */}
+            <button
+              onClick={toggleTheme}
+              className={`p-2.5 rounded-2xl border transition-all cursor-pointer ${
+                isLight ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+              }`}
+              title={isLight ? 'Ganti ke Mode Malam' : 'Ganti ke Mode Terang'}
+            >
+              {isLight ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </button>
 
             <button
               onClick={() => signOutAction()}
-              className="text-slate-400 hover:text-rose-400 p-2 rounded-lg transition-colors cursor-pointer"
+              className={`p-2.5 rounded-2xl border transition-all cursor-pointer ${
+                isLight ? 'bg-slate-100 border-slate-200 text-slate-600 hover:text-rose-500 hover:border-rose-200' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-950'
+              }`}
               title="Keluar Akun"
             >
               <LogOut className="h-4 w-4" />
@@ -572,66 +563,139 @@ export default function Dashboard({
         
         {/* Status Alerts */}
         {statusMessage && (
-          <div className={`col-span-12 p-4 rounded-xl border flex items-center justify-between ${
+          <div className={`col-span-12 p-4 rounded-2xl border flex items-center justify-between shadow-xs ${
             statusMessage.type === 'success' 
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+              : 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-455'
           }`}>
-            <span className="text-sm font-medium">{statusMessage.text}</span>
+            <span className="text-sm font-semibold">{statusMessage.text}</span>
             <button onClick={() => setStatusMessage(null)} className="text-xs opacity-60 hover:opacity-100 font-bold px-2">✕</button>
           </div>
         )}
 
+        {/* PROMINENT DAILY TOKEN USAGE INDICATOR CARD */}
+        <div className="col-span-12">
+          <div className={`rounded-3xl p-6 transition-all relative overflow-hidden shadow-xs ${
+            isLight 
+              ? 'bg-lime-400/15 border border-lime-400/20 text-slate-900' 
+              : 'bg-[#18251e] border border-emerald-950/60 text-slate-100'
+          }`}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-lime-400/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center space-x-3.5">
+                <div className={`h-11 w-11 rounded-2xl flex items-center justify-center border shrink-0 ${
+                  isLight ? 'bg-lime-400/20 border-lime-400/30 text-lime-700' : 'bg-lime-400/30 border-lime-400/40 text-lime-400'
+                }`}>
+                  <Brain className="h-5.5 w-5.5" />
+                </div>
+                <div>
+                  <h3 className="text-md font-black">Informasi Penggunaan Token Harian</h3>
+                  <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Kuota API digunakan untuk menganalisis menu makanan Anda secara otomatis.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-6">
+                <div className="border-r pr-6 border-slate-350 dark:border-slate-800/80">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Token Terpakai Hari Ini</span>
+                  <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-lime-500 font-mono mt-0.5">
+                    {dailyLog?.tokens_used || 0} <span className="text-xs font-bold text-slate-450 dark:text-slate-500">token</span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Batas Analisis Gratis</span>
+                  <div className="text-2xl font-black text-slate-800 dark:text-slate-200 mt-0.5">
+                    {profile.daily_ai_requests} <span className="text-xs font-normal text-slate-500">/ 1 kali</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Column 1: Progress Indicators (lg: 8) */}
         <div className="lg:col-span-8 space-y-8">
-Progress Indicators
-          {/* Targets Progress Panel */}
-          <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-2xl shadow-xl relative overflow-hidden backdrop-blur-sm">
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+          
+          {/* Main Visual Intake Quest Summary (Acuannya pada Gambar) */}
+          <div className={`p-8 rounded-3xl shadow-xs transition-colors overflow-hidden relative ${
+            isLight ? 'bg-white border border-slate-200/60' : 'bg-[#0f1524] border border-slate-900'
+          }`}>
+            {/* Ambient glows */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-lime-500/5 rounded-full blur-3xl pointer-events-none" />
             
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-lg font-bold text-slate-100 flex items-center">
-                  <Dumbbell className="h-5 w-5 text-emerald-400 mr-2" />
-                  Target Kalori & Nutrisi Hari Ini
-                </h2>
-                <p className="text-xs text-slate-400">Membandingkan asupan makanan dengan target tubuh Anda</p>
+                <h2 className="text-lg font-black tracking-tight">Ringkasan Nutrisi Harian</h2>
+                <p className={`text-xs ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>Target berdasarkan profil berat, tinggi, & umur Anda</p>
               </div>
               <button 
                 onClick={() => setShowRecalculate(true)}
-                className="text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all flex items-center cursor-pointer"
+                className={`text-xs font-bold border px-4 py-2 rounded-2xl transition-all cursor-pointer ${
+                  isLight ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-slate-900 border-slate-800 hover:bg-slate-850 text-slate-300'
+                }`}
               >
-                <RefreshCw className="h-3 w-3 mr-1.5" />
-                Ubah Profil Tubuh
+                Ubah Target Nutrisi
               </button>
             </div>
 
-            {/* Calories Ring / Progress */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="md:col-span-1 flex flex-col items-center justify-center border-r border-slate-800/50 pr-4 md:border-r-slate-800">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Energi Kalori</span>
-                <span className="text-3xl font-extrabold text-white mt-1">{loggedCal}</span>
-                <span className="text-xs text-slate-500 mt-1">dari {targetCal} kkal</span>
-                
-                {/* Visual Progress Pill */}
-                <div className="w-full bg-slate-950 rounded-full h-2 mt-4 overflow-hidden border border-slate-850">
-                  <div 
-                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${calPercentage}%` }}
-                  />
+            {/* Calories Rings/Pills Dashboard */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              
+              {/* Primary Quest Pill (Like the green bar card in screenshot) */}
+              <div className="md:col-span-5 bg-lime-400/10 dark:bg-lime-400/5 border border-lime-400/20 rounded-3xl p-5 flex flex-col justify-between h-full relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-lime-400/5 rounded-full blur-xl pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-lime-700 dark:text-lime-400">Total Kalori</span>
+                  <span className="text-xs font-bold bg-white dark:bg-slate-900 px-2 py-0.5 rounded-full text-lime-700 dark:text-lime-400 border border-lime-450/20">
+                    {calPercentage}%
+                  </span>
                 </div>
-                <span className="text-xs text-emerald-400 font-semibold mt-1">{calPercentage}% Tercapai</span>
+
+                <div className="my-6">
+                  <div className="text-4xl font-black tracking-tight">{loggedCal}</div>
+                  <div className={`text-xs font-medium mt-1 ${isLight ? 'text-slate-655' : 'text-slate-400'}`}>
+                    dari target {targetCal} kkal
+                  </div>
+                </div>
+
+                {/* Progress bar with outline knob (Image Quest slider lookalike) */}
+                <div className="relative pt-1.5">
+                  <div className="h-3.5 bg-slate-200 dark:bg-slate-950 border border-slate-300/40 dark:border-slate-850 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-lime-400 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${calPercentage}%` }}
+                    />
+                  </div>
+                  {calPercentage > 0 && calPercentage < 100 && (
+                    <div 
+                      className="absolute top-[2px] w-5 h-5 bg-white border-2 border-black rounded-full -translate-x-1/2 shadow-md transition-all duration-500 flex items-center justify-center cursor-pointer"
+                      style={{ left: `${calPercentage}%` }}
+                    >
+                      <div className="w-1.5 h-1.5 bg-lime-500 rounded-full" />
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Macros Breakdown Progress Bars */}
-              <div className="md:col-span-3 space-y-4 justify-center flex flex-col">
-                {/* Protein */}
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-rose-400">Protein (Membangun Otot)</span>
-                    <span className="text-slate-300">{loggedProtein}g / {targetProtein}g</span>
+              {/* Individual Macro Pillars (Quest List Items in screenshot) */}
+              <div className="md:col-span-7 space-y-4">
+                
+                {/* Protein Item */}
+                <div className={`p-4 rounded-2xl border transition-colors ${
+                  isLight ? 'bg-slate-50/50 border-slate-200/50' : 'bg-slate-900/30 border-slate-900'
+                }`}>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+                    <span className="flex items-center text-rose-500 dark:text-rose-400">
+                      <Flame className="h-4 w-4 mr-1.5 shrink-0" />
+                      Protein
+                    </span>
+                    <span className="font-mono text-slate-550 dark:text-slate-300">
+                      {loggedProtein}g <span className="font-normal opacity-60">/ {targetProtein}g</span> ({proteinPercentage}%)
+                    </span>
                   </div>
-                  <div className="bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-850">
+                  <div className="h-2.5 bg-slate-200 dark:bg-slate-950 border border-slate-300/40 dark:border-slate-850 rounded-full overflow-hidden">
                     <div 
                       className="bg-rose-500 h-full rounded-full transition-all duration-500" 
                       style={{ width: `${proteinPercentage}%` }}
@@ -639,13 +703,20 @@ Progress Indicators
                   </div>
                 </div>
 
-                {/* Carbs */}
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-amber-400">Karbohidrat (Energi Utama)</span>
-                    <span className="text-slate-300">{loggedCarbs}g / {targetCarbs}g</span>
+                {/* Carbs Item */}
+                <div className={`p-4 rounded-2xl border transition-colors ${
+                  isLight ? 'bg-slate-50/50 border-slate-200/50' : 'bg-slate-900/30 border-slate-900'
+                }`}>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+                    <span className="flex items-center text-amber-500 dark:text-amber-400">
+                      <Footprints className="h-4 w-4 mr-1.5 shrink-0" />
+                      Karbohidrat
+                    </span>
+                    <span className="font-mono text-slate-550 dark:text-slate-300">
+                      {loggedCarbs}g <span className="font-normal opacity-60">/ {targetCarbs}g</span> ({carbsPercentage}%)
+                    </span>
                   </div>
-                  <div className="bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-850">
+                  <div className="h-2.5 bg-slate-200 dark:bg-slate-950 border border-slate-300/40 dark:border-slate-850 rounded-full overflow-hidden">
                     <div 
                       className="bg-amber-500 h-full rounded-full transition-all duration-500" 
                       style={{ width: `${carbsPercentage}%` }}
@@ -653,114 +724,119 @@ Progress Indicators
                   </div>
                 </div>
 
-                {/* Fat */}
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-sky-400">Lemak (Fungsi Hormon & Sendi)</span>
-                    <span className="text-slate-300">{loggedFat}g / {targetFat}g</span>
+                {/* Fat Item */}
+                <div className={`p-4 rounded-2xl border transition-colors ${
+                  isLight ? 'bg-slate-50/50 border-slate-200/50' : 'bg-slate-900/30 border-slate-900'
+                }`}>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+                    <span className="flex items-center text-sky-500 dark:text-sky-400">
+                      <Droplets className="h-4 w-4 mr-1.5 shrink-0" />
+                      Lemak
+                    </span>
+                    <span className="font-mono text-slate-550 dark:text-slate-300">
+                      {loggedFat}g <span className="font-normal opacity-60">/ {targetFat}g</span> ({fatPercentage}%)
+                    </span>
                   </div>
-                  <div className="bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-850">
+                  <div className="h-2.5 bg-slate-200 dark:bg-slate-950 border border-slate-300/40 dark:border-slate-850 rounded-full overflow-hidden">
                     <div 
                       className="bg-sky-500 h-full rounded-full transition-all duration-500" 
                       style={{ width: `${fatPercentage}%` }}
                     />
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Token Usage Stats Indicator at bottom of ring card */}
-            <div className="border-t border-slate-800/60 mt-5 pt-3.5 flex justify-between items-center text-xs text-slate-500">
-              <span className="flex items-center">
-                <Database className="h-3.5 w-3.5 mr-1 text-slate-655" />
-                Hari ini: <strong className="text-slate-350 ml-1">{foodEntries.length} makanan dicatat</strong>
-              </span>
-              <span className="flex items-center">
-                <Brain className="h-3.5 w-3.5 mr-1 text-slate-655" />
-                Penggunaan Token API Hari Ini: <strong className="text-cyan-400 ml-1 font-mono">{dailyLog?.tokens_used || 0} token</strong>
-              </span>
+              </div>
             </div>
           </div>
 
           {/* Logging Component / search and options */}
-          <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-2xl shadow-xl space-y-6">
-            <div className="flex justify-between items-center">
+          <div className={`p-6 rounded-3xl shadow-xs transition-colors ${
+            isLight ? 'bg-white border border-slate-200/60' : 'bg-[#0f1524] border border-slate-900'
+          }`}>
+            <div className="flex justify-between items-center flex-wrap gap-4 mb-6">
               <div>
-                <h3 className="text-md font-bold text-slate-100 flex items-center">
-                  <Plus className="h-5 w-5 text-emerald-400 mr-2" />
-                  Hari ini kamu sudah makan apa saja?
-                </h3>
-                <p className="text-xs text-slate-400">Tulis menu makanmu, sistem akan mendeteksi kandungan gizinya secara otomatis</p>
+                <h3 className="text-lg font-black tracking-tight">Hari ini kamu sudah makan apa saja?</h3>
+                <p className={`text-xs ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>Tulis menu makanan Anda secara alami untuk dihitung</p>
               </div>
               <button 
                 onClick={() => setShowManualAdd(!showManualAdd)}
-                className="text-xs font-semibold text-emerald-400 hover:text-emerald-350 transition-colors bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg cursor-pointer"
+                className={`text-xs font-bold border px-4 py-2 rounded-2xl transition-all cursor-pointer ${
+                  isLight ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-slate-900 border-slate-800 hover:bg-slate-850 text-slate-300'
+                }`}
               >
-                {showManualAdd ? 'Kembali ke Kolom Pencarian' : 'Catat Secara Manual'}
+                {showManualAdd ? 'Kembali ke Kolom' : 'Input Manual'}
               </button>
             </div>
 
             {showManualAdd ? (
               /* Manual Input Form */
-              <form onSubmit={handleManualInsert} className="bg-slate-950/60 p-5 border border-slate-850 rounded-xl space-y-4">
-                <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Formulir Catatan Manual</h4>
+              <form onSubmit={handleManualInsert} className={`p-5 rounded-2xl border ${
+                isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-slate-950/40 border-slate-900'
+              } space-y-4`}>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Input Manual Detail Makanan</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Makanan</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Nama Makanan</label>
                     <input 
                       type="text" 
                       required
-                      placeholder="Contoh: Nasi Goreng Gila"
+                      placeholder="Contoh: Nasi Padang Lauk Rendang"
                       value={manualForm.food_name}
                       onChange={(e) => setManualForm({...manualForm, food_name: e.target.value})}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden transition-all ${
+                        isLight ? 'bg-white border-slate-200 text-slate-900 focus:border-lime-500' : 'bg-slate-900 border-slate-850 text-slate-200 focus:border-lime-500'
+                      }`}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Kalori (kkal)</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Kalori (kkal)</label>
                     <input 
                       type="number" 
                       placeholder="0"
-                      min="0"
                       value={manualForm.calories}
                       onChange={(e) => setManualForm({...manualForm, calories: e.target.value})}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden transition-all ${
+                        isLight ? 'bg-white border-slate-200 text-slate-900 focus:border-lime-500' : 'bg-slate-900 border-slate-850 text-slate-200 focus:border-lime-500'
+                      }`}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Protein (gram)</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Protein (gram)</label>
                     <input 
                       type="number" 
                       placeholder="0"
                       step="0.1"
-                      min="0"
                       value={manualForm.protein}
                       onChange={(e) => setManualForm({...manualForm, protein: e.target.value})}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden transition-all ${
+                        isLight ? 'bg-white border-slate-200 text-slate-900 focus:border-lime-500' : 'bg-slate-900 border-slate-850 text-slate-200 focus:border-lime-500'
+                      }`}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Karbohidrat (gram)</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Karbohidrat (gram)</label>
                     <input 
                       type="number" 
                       placeholder="0"
                       step="0.1"
-                      min="0"
                       value={manualForm.carbs}
                       onChange={(e) => setManualForm({...manualForm, carbs: e.target.value})}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden transition-all ${
+                        isLight ? 'bg-white border-slate-200 text-slate-900 focus:border-lime-500' : 'bg-slate-900 border-slate-850 text-slate-200 focus:border-lime-500'
+                      }`}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Lemak (gram)</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Lemak (gram)</label>
                     <input 
                       type="number" 
                       placeholder="0"
                       step="0.1"
-                      min="0"
                       value={manualForm.fat}
                       onChange={(e) => setManualForm({...manualForm, fat: e.target.value})}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden transition-all ${
+                        isLight ? 'bg-white border-slate-200 text-slate-900 focus:border-lime-500' : 'bg-slate-900 border-slate-850 text-slate-200 focus:border-lime-500'
+                      }`}
                     />
                   </div>
                 </div>
@@ -771,84 +847,90 @@ Progress Indicators
                     id="saveToDatabase" 
                     checked={manualForm.saveToDatabase}
                     onChange={(e) => setManualForm({...manualForm, saveToDatabase: e.target.checked})}
-                    className="rounded-sm border-slate-850 bg-slate-900 text-emerald-500 focus:ring-0 cursor-pointer"
+                    className="rounded border-slate-350 dark:border-slate-800 bg-slate-100 text-lime-500 focus:ring-0 cursor-pointer"
                   />
                   <label htmlFor="saveToDatabase" className="text-xs text-slate-400 cursor-pointer">
-                    Simpan ke Makanan Favorit (agar bisa dicari instan nanti)
+                    Simpan ke daftar favorit Anda
                   </label>
                 </div>
 
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg transition-colors cursor-pointer text-sm"
+                  className="w-full bg-lime-400 hover:bg-lime-500 disabled:opacity-50 text-black font-extrabold py-3.5 rounded-2xl transition-all cursor-pointer text-sm shadow-md"
                 >
-                  {isSubmitting ? 'Mencatat...' : 'Catat Makanan'}
+                  {isSubmitting ? 'Mencatat...' : 'Catat Makanan Baru'}
                 </button>
               </form>
             ) : (
-              /* Hybrid Input Search and AI Area */
+              /* Search / Ask Assistant Input area */
               <div className="space-y-4">
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-slate-500" />
+                  <div className="absolute inset-y-0 left-0 pl-4.5 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-slate-400" />
                   </div>
                   <input 
                     type="text" 
-                    placeholder="Contoh: '1 mangkok soto ayam pakai nasi' atau 'indomie goreng 1 bungkus'"
+                    placeholder="Tulis makananmu... (misal: '1 mangkok oatmeal + susu + pisang')"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-slate-955 border border-slate-850 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500 placeholder-slate-500 transition-colors"
+                    className={`w-full border rounded-2xl pl-12 pr-4 py-3.5 text-sm focus:outline-hidden transition-all placeholder-slate-400 ${
+                      isLight 
+                        ? 'bg-slate-50 border-slate-200/80 text-slate-900 focus:border-lime-550' 
+                        : 'bg-slate-950 border-slate-850 text-slate-200 focus:border-lime-500'
+                    }`}
                   />
                 </div>
 
-                {/* Hybrid Search Autocomplete Panel */}
+                {/* Hybrid Autocomplete Search Results */}
                 {searchResults.length > 0 && (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 max-h-60 overflow-y-auto divide-y divide-slate-800/50 shadow-2xl">
-                    <div className="px-2.5 py-1 text-slate-500 text-xs font-semibold flex items-center">
-                      <Database className="h-3 w-3 mr-1 text-emerald-500" />
-                      Ditemukan di makanan favorit Anda
+                  <div className={`border rounded-2xl p-2 max-h-60 overflow-y-auto divide-y shadow-lg ${
+                    isLight ? 'bg-white border-slate-200 divide-slate-100' : 'bg-slate-900 border-slate-800 divide-slate-850'
+                  }`}>
+                    <div className="px-2.5 py-1.5 text-slate-450 text-[10px] font-bold uppercase tracking-wider flex items-center">
+                      <Database className="h-3.5 w-3.5 mr-1.5 text-lime-550" />
+                      Daftar makanan favorit tersimpan
                     </div>
                     {searchResults.map((food) => (
                       <button 
                         key={food.id}
                         onClick={() => setSelectedSavedFood(food)}
-                        className="w-full text-left px-3 py-2.5 hover:bg-slate-850/80 transition-colors flex justify-between items-center text-sm cursor-pointer"
+                        className="w-full text-left px-3.5 py-3 hover:bg-lime-400/5 transition-colors flex justify-between items-center text-sm cursor-pointer"
                       >
                         <div>
-                          <span className="font-semibold text-slate-200">{food.food_name}</span>
-                          <span className="text-xs text-slate-550 ml-2">({food.base_serving_description})</span>
+                          <span className="font-extrabold text-slate-800 dark:text-slate-200">{food.food_name}</span>
+                          <span className="text-xs text-slate-500 ml-2">({food.base_serving_description})</span>
                         </div>
-                        <div className="text-xs text-slate-400 font-medium">
-                          {food.calories} kkal • P: {food.protein}g • K: {food.carbs}g • L: {food.fat}g
+                        <div className="text-xs text-slate-500 font-semibold font-mono">
+                          {food.calories} kkal • P:{food.protein}g K:{food.carbs}g L:{food.fat}g
                         </div>
                       </button>
                     ))}
                   </div>
                 )}
 
-                {/* Match selection display */}
+                {/* Selected food portion adjuster */}
                 {selectedSavedFood && (
-                  <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl space-y-4">
+                  <div className="bg-lime-400/5 border border-lime-400/20 p-5 rounded-2xl space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="text-sm font-bold text-emerald-400">Makanan Favorit Ditemukan!</h4>
-                        <p className="text-xs text-slate-300 mt-0.5">
-                          Terpilih: <span className="font-semibold text-white">{selectedSavedFood.food_name}</span> ({selectedSavedFood.base_serving_description})
+                        <h4 className="text-sm font-bold text-lime-600 dark:text-lime-400">Makanan Favorit Ditemukan!</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Terpilih: <span className="font-bold text-slate-900 dark:text-white">{selectedSavedFood.food_name}</span> ({selectedSavedFood.base_serving_description})
                         </p>
                       </div>
                       <button 
                         onClick={() => setSelectedSavedFood(null)} 
-                        className="text-xs text-slate-400 hover:text-slate-200"
+                        className="text-xs text-slate-400 hover:text-slate-300"
                       >
-                        Hapus Pilihan
+                        Batal
                       </button>
                     </div>
 
                     <div className="flex items-center space-x-4">
                       <div className="flex-1">
-                        <label className="block text-xs font-semibold text-slate-450 mb-1">Sesuaikan Porsi Makanan</label>
-                        <div className="flex items-center space-x-2">
+                        <label className="block text-xs font-semibold text-slate-450 mb-1.5">Sesuaikan Porsi Konsumsi</label>
+                        <div className="flex items-center space-x-3.5">
                           <input 
                             type="range" 
                             min="0.1" 
@@ -856,7 +938,7 @@ Progress Indicators
                             step="0.1" 
                             value={portionMultiplier}
                             onChange={(e) => setPortionMultiplier(Number(e.target.value))}
-                            className="flex-1 accent-emerald-500 h-1 bg-slate-850 rounded-lg cursor-pointer"
+                            className="flex-1 accent-lime-500 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg cursor-pointer"
                           />
                           <input 
                             type="number" 
@@ -864,49 +946,57 @@ Progress Indicators
                             min="0.01"
                             value={portionMultiplier}
                             onChange={(e) => setPortionMultiplier(Number(e.target.value))}
-                            className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-center w-16 focus:outline-hidden"
+                            className={`border rounded-lg px-2 py-1 text-xs text-center w-16 focus:outline-hidden font-bold ${
+                              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-800 text-slate-200'
+                            }`}
                           />
-                          <span className="text-xs font-semibold text-slate-300">x porsi normal</span>
+                          <span className="text-xs font-bold text-slate-400">x porsi</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Portioned calculations preview */}
-                    <div className="bg-slate-950/80 border border-slate-900 rounded-lg p-3 text-xs flex justify-around text-slate-350">
-                      <div>Kalori: <span className="font-bold text-white">{Math.round(selectedSavedFood.calories * portionMultiplier)} kkal</span></div>
-                      <div>P: <span className="font-bold text-rose-450">{Math.round(selectedSavedFood.protein * portionMultiplier * 10) / 10}g</span></div>
-                      <div>K: <span className="font-bold text-amber-450">{Math.round(selectedSavedFood.carbs * portionMultiplier * 10) / 10}g</span></div>
-                      <div>L: <span className="font-bold text-sky-450">{Math.round(selectedSavedFood.fat * portionMultiplier * 10) / 10}g</span></div>
+                    <div className={`border rounded-xl p-3 text-xs flex justify-around font-semibold ${
+                      isLight ? 'bg-white border-slate-200/60' : 'bg-slate-950/80 border-slate-900'
+                    }`}>
+                      <div>Kalori: <span className="font-extrabold text-slate-800 dark:text-white">{Math.round(selectedSavedFood.calories * portionMultiplier)} kkal</span></div>
+                      <div>P: <span className="font-bold text-rose-500">{Math.round(selectedSavedFood.protein * portionMultiplier * 10) / 10}g</span></div>
+                      <div>K: <span className="font-bold text-amber-500">{Math.round(selectedSavedFood.carbs * portionMultiplier * 10) / 10}g</span></div>
+                      <div>L: <span className="font-bold text-sky-500">{Math.round(selectedSavedFood.fat * portionMultiplier * 10) / 10}g</span></div>
                     </div>
 
                     <button 
                       onClick={handleAddSavedFood}
                       disabled={isSubmitting}
-                      className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-955 font-bold py-2 rounded-lg text-xs tracking-wide transition-colors cursor-pointer"
+                      className="w-full bg-lime-400 hover:bg-lime-500 disabled:opacity-50 text-black font-extrabold py-3 rounded-xl text-xs tracking-wide transition-colors cursor-pointer"
                     >
                       {isSubmitting ? 'Mencatat...' : 'Catat dengan Porsi Ini'}
                     </button>
                   </div>
                 )}
 
-                {/* Suggest AI calculation if no local matches */}
+                {/* AI extract prompt if search term contains content and no favorite matches */}
                 {searchTerm.trim() !== '' && !selectedSavedFood && (
-                  <div className="flex items-center justify-between p-4 bg-slate-950 border border-slate-850 rounded-xl">
-                    <div className="flex items-center space-x-3 pr-2">
-                      <Brain className="h-5 w-5 text-emerald-400 shrink-0" />
+                  <div className={`flex items-center justify-between p-4.5 border rounded-2xl transition-all ${
+                    isLight ? 'bg-slate-50 border-slate-200/80' : 'bg-slate-950 border-slate-900'
+                  }`}>
+                    <div className="flex items-center space-x-3.5 pr-2">
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isLight ? 'bg-lime-100 text-lime-700' : 'bg-lime-400/20 text-lime-400'}`}>
+                        <Brain className="h-5 w-5" />
+                      </div>
                       <div>
-                        <div className="text-sm font-semibold text-slate-200">Analisis Menu Makanan</div>
-                        <div className="text-xs text-slate-450">
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Analisis Otomatis Menu</div>
+                        <div className="text-xs text-slate-500 mt-0.5">
                           {profile.role === 'free' 
-                            ? 'Menggunakan 1 limit analisis harian gratis Anda.' 
-                            : 'Analisis menu tanpa batas dengan Kunci API Pro Anda.'}
+                            ? 'Asisten akan memecah menu makanan Anda.' 
+                            : 'Gunakan asisten analisis sepuasnya tanpa batas.'}
                         </div>
                       </div>
                     </div>
                     <button 
                       onClick={handleAiExtract}
                       disabled={aiLoading}
-                      className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 disabled:opacity-50 text-black font-semibold text-xs py-2.5 px-4 rounded-lg transition-all cursor-pointer flex items-center whitespace-nowrap shadow-md shadow-emerald-950/20"
+                      className="bg-lime-400 hover:bg-lime-500 disabled:opacity-50 text-black font-bold text-xs py-2.5 px-4.5 rounded-xl transition-all cursor-pointer flex items-center whitespace-nowrap shadow-md shadow-lime-950/10"
                     >
                       {aiLoading ? (
                         <>
@@ -915,8 +1005,8 @@ Progress Indicators
                         </>
                       ) : (
                         <>
-                          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                          Analisis Otomatis
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
+                          Mulai Analisis
                         </>
                       )}
                     </button>
@@ -927,63 +1017,65 @@ Progress Indicators
 
             {/* AI Review Panel */}
             {aiError && (
-              <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl text-rose-400 text-xs flex items-start space-x-2">
+              <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-2xl text-rose-600 dark:text-rose-455 text-xs flex items-start space-x-2">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">Analisis Gagal: </span>
+                  <span className="font-bold">Gagal Menganalisis: </span>
                   {aiError}
                 </div>
               </div>
             )}
 
             {aiResult && (
-              <div className="bg-slate-950 border border-emerald-500/20 p-5 rounded-xl space-y-4">
-                <div className="flex justify-between items-start border-b border-slate-850 pb-3">
+              <div className={`p-5 rounded-2xl border mt-4 ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-900'
+              } space-y-4`}>
+                <div className="flex justify-between items-start border-b border-slate-200/50 dark:border-slate-900 pb-3">
                   <div>
-                    <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400">Hasil Analisis Menu</span>
-                    <h4 className="text-md font-bold text-white mt-0.5">{aiResult.food_name}</h4>
+                    <span className="text-[10px] uppercase tracking-wider font-extrabold text-lime-650 dark:text-lime-400">Ditemukan Hasil Berikut:</span>
+                    <h4 className="text-md font-extrabold text-slate-800 dark:text-white mt-0.5">{aiResult.food_name}</h4>
                   </div>
                   <button 
                     onClick={() => setAiResult(null)} 
-                    className="text-xs text-slate-400 hover:text-slate-200"
+                    className="text-xs text-slate-400 hover:text-slate-655"
                   >
-                    Batalkan
+                    Batal
                   </button>
                 </div>
 
-                {/* Ingredients table breakdown */}
+                {/* Detected ingredients breakdown */}
                 <div className="space-y-2">
-                  <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Bahan Makanan yang Terdeteksi</div>
+                  <div className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Bahan Makanan yang Terdeteksi</div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="text-slate-550 border-b border-slate-900">
-                          <th className="pb-1.5 font-semibold">Bahan</th>
-                          <th className="pb-1.5 font-semibold text-right">Perkiraan Berat</th>
-                          <th className="pb-1.5 font-semibold text-right">Kalori</th>
-                          <th className="pb-1.5 font-semibold text-right">Protein</th>
-                          <th className="pb-1.5 font-semibold text-right">Karbohidrat</th>
-                          <th className="pb-1.5 font-semibold text-right">Lemak</th>
+                        <tr className="text-slate-450 border-b border-slate-200 dark:border-slate-900">
+                          <th className="pb-2 font-bold">Bahan</th>
+                          <th className="pb-2 font-bold text-right">Berat</th>
+                          <th className="pb-2 font-bold text-right">Kalori</th>
+                          <th className="pb-2 font-bold text-right">Protein</th>
+                          <th className="pb-2 font-bold text-right">Karbo</th>
+                          <th className="pb-2 font-bold text-right">Lemak</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-900">
+                      <tbody className="divide-y divide-slate-200/50 dark:divide-slate-900">
                         {aiResult.parsed_ingredients.map((ing, i) => (
-                          <tr key={i} className="text-slate-300">
-                            <td className="py-2 text-slate-200 font-medium">{ing.ingredient_name}</td>
-                            <td className="py-2 text-right text-slate-500">{ing.estimated_grams}g</td>
-                            <td className="py-2 text-right">{ing.calories} kkal</td>
-                            <td className="py-2 text-right text-rose-450">{ing.protein}g</td>
-                            <td className="py-2 text-right text-amber-450">{ing.carbs}g</td>
-                            <td className="py-2 text-right text-sky-450">{ing.fat}g</td>
+                          <tr key={i} className="text-slate-700 dark:text-slate-300">
+                            <td className="py-2.5 text-slate-900 dark:text-slate-200 font-bold">{ing.ingredient_name}</td>
+                            <td className="py-2.5 text-right text-slate-500 font-mono">{ing.estimated_grams}g</td>
+                            <td className="py-2.5 text-right font-mono">{ing.calories} kkal</td>
+                            <td className="py-2.5 text-right text-rose-500 font-mono font-bold">{ing.protein}g</td>
+                            <td className="py-2.5 text-right text-amber-500 font-mono font-bold">{ing.carbs}g</td>
+                            <td className="py-2.5 text-right text-sky-500 font-mono font-bold">{ing.fat}g</td>
                           </tr>
                         ))}
-                        <tr className="font-bold text-white border-t border-slate-800">
-                          <td className="py-2 text-emerald-400">Total Nutrisi</td>
-                          <td className="py-2 text-right"></td>
-                          <td className="py-2 text-right text-emerald-400">{aiResult.total_calories} kkal</td>
-                          <td className="py-2 text-right text-rose-450">{aiResult.total_protein}g</td>
-                          <td className="py-2 text-right text-amber-450">{aiResult.total_carbs}g</td>
-                          <td className="py-2 text-right text-sky-450">{aiResult.total_fat}g</td>
+                        <tr className="font-extrabold text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-800">
+                          <td className="py-3 text-lime-650 dark:text-lime-450">Total Nutrisi</td>
+                          <td className="py-3 text-right"></td>
+                          <td className="py-3 text-right text-lime-655 dark:text-lime-400 font-mono">{aiResult.total_calories} kkal</td>
+                          <td className="py-3 text-right text-rose-500 font-mono">{aiResult.total_protein}g</td>
+                          <td className="py-3 text-right text-amber-500 font-mono">{aiResult.total_carbs}g</td>
+                          <td className="py-3 text-right text-sky-500 font-mono">{aiResult.total_fat}g</td>
                         </tr>
                       </tbody>
                     </table>
@@ -996,25 +1088,18 @@ Progress Indicators
                     id="aiSaveToLib" 
                     checked={aiSaveToLib}
                     onChange={(e) => setAiSaveToLib(e.target.checked)}
-                    className="rounded-sm border-slate-850 bg-slate-900 text-emerald-500 focus:ring-0 cursor-pointer"
+                    className="rounded border-slate-350 dark:border-slate-850 bg-slate-100 text-lime-550 focus:ring-0 cursor-pointer"
                   />
-                  <label htmlFor="aiSaveToLib" className="text-xs text-slate-400 cursor-pointer">
-                    Simpan makanan ini ke daftar makanan favorit saya
+                  <label htmlFor="aiSaveToLib" className="text-xs text-slate-450 cursor-pointer">
+                    Simpan makanan ini ke daftar favorit untuk pencarian cepat nanti
                   </label>
                 </div>
-
-                {/* Token notification */}
-                {aiResult.tokens_spent && aiResult.tokens_spent > 0 && (
-                  <div className="text-[10px] text-cyan-400 font-mono">
-                    * Analisis menghabiskan {aiResult.tokens_spent} token API.
-                  </div>
-                )}
 
                 <div className="flex space-x-3 pt-2">
                   <button 
                     onClick={handleSaveAiResult}
                     disabled={isSubmitting}
-                    className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg text-xs tracking-wider transition-colors cursor-pointer"
+                    className="flex-1 bg-lime-400 hover:bg-lime-500 disabled:opacity-50 text-black font-extrabold py-3.5 rounded-2xl text-xs tracking-wider transition-colors cursor-pointer shadow-md shadow-lime-950/5"
                   >
                     {isSubmitting ? 'Menyimpan...' : 'Konfirmasi & Masukkan ke Buku Harian'}
                   </button>
@@ -1024,29 +1109,32 @@ Progress Indicators
           </div>
 
           {/* Today's Logged Foods List */}
-          <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-2xl shadow-xl space-y-4">
+          <div className={`p-6 rounded-3xl shadow-xs transition-colors space-y-4 ${
+            isLight ? 'bg-white border border-slate-200/60' : 'bg-[#0f1524] border border-slate-900'
+          }`}>
             <div>
-              <h3 className="text-md font-bold text-slate-100 flex items-center">
-                <Activity className="h-5 w-5 text-emerald-400 mr-2" />
-                Buku Harian Makanan Anda - {selectedDate}
-              </h3>
-              <p className="text-xs text-slate-400">Makanan yang telah dicatat hari ini</p>
+              <h3 className="text-lg font-black tracking-tight">Buku Harian Makanan Anda</h3>
+              <p className={`text-xs ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>Makanan yang dicatat pada {selectedDate}</p>
             </div>
 
             {foodEntries.length === 0 ? (
-              <div className="text-center py-8 bg-slate-950/40 border border-slate-900 border-dashed rounded-xl">
-                <Database className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-sm text-slate-400 font-medium">Belum ada makanan yang dicatat hari ini.</p>
-                <p className="text-xs text-slate-500 mt-0.5">Tulis makananmu di kolom pencarian di atas untuk memulai!</p>
+              <div className={`text-center py-10 border border-dashed rounded-2xl ${
+                isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-slate-950/40 border-slate-850'
+              }`}>
+                <Database className="h-8 w-8 text-slate-400 mx-auto mb-2.5" />
+                <p className="text-sm text-slate-700 dark:text-slate-400 font-bold">Belum ada makanan dicatat</p>
+                <p className="text-xs text-slate-500 mt-1">Cari atau masukkan menu makanan Anda di atas.</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-900 bg-slate-950/40 border border-slate-900 rounded-xl overflow-hidden">
+              <div className={`divide-y border rounded-2xl overflow-hidden ${
+                isLight ? 'bg-slate-50/50 border-slate-200 divide-slate-200/60' : 'bg-slate-950/40 border-slate-900 divide-slate-900'
+              }`}>
                 {foodEntries.map((entry) => (
-                  <div key={entry.id} className="p-4 flex items-center justify-between hover:bg-slate-900/30 transition-colors">
+                  <div key={entry.id} className="p-4 flex items-center justify-between hover:bg-lime-400/5 transition-colors">
                     <div className="space-y-1">
-                      <span className="text-sm font-semibold text-slate-200">{entry.raw_input}</span>
-                      <div className="flex items-center space-x-3 flex-wrap text-xs text-slate-400">
-                        <span className="bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 font-medium text-emerald-400">
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{entry.raw_input}</span>
+                      <div className="flex items-center space-x-3 flex-wrap text-xs text-slate-500">
+                        <span className="bg-lime-400/10 text-lime-700 dark:text-lime-400 font-extrabold px-2 py-0.5 rounded-full text-[10px]">
                           {entry.calories} kkal
                         </span>
                         <span>P: {entry.protein}g</span>
@@ -1056,8 +1144,10 @@ Progress Indicators
                     </div>
                     <button
                       onClick={() => handleDeleteEntry(entry.id)}
-                      className="text-slate-550 hover:text-rose-455 p-2 rounded-lg transition-colors cursor-pointer"
-                      title="Hapus Catatan"
+                      className={`p-2 rounded-xl transition-all cursor-pointer ${
+                        isLight ? 'text-slate-400 hover:text-rose-500 hover:bg-slate-100' : 'text-slate-500 hover:text-rose-400 hover:bg-slate-900'
+                      }`}
+                      title="Hapus Makanan"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -1070,44 +1160,47 @@ Progress Indicators
 
         {/* Column 2: Personal Database Library (lg: 4) */}
         <div className="lg:col-span-4 space-y-8">
-          <div className="bg-slate-900/40 border border-slate-850 p-6 rounded-2xl shadow-xl space-y-4">
+          <div className={`p-6 rounded-3xl shadow-xs transition-colors space-y-4 ${
+            isLight ? 'bg-white border border-slate-200/60' : 'bg-[#0f1524] border border-slate-900'
+          }`}>
             <div>
-              <h3 className="text-md font-bold text-slate-100 flex items-center">
-                <Database className="h-5 w-5 text-emerald-400 mr-2" />
-                Makanan Favorit Tersimpan
-              </h3>
-              <p className="text-xs text-slate-400">Mencatat ulang makanan terdaftar tanpa menghabiskan kuota harian gratis</p>
+              <h3 className="text-lg font-black tracking-tight">Makanan Favorit Anda</h3>
+              <p className={`text-xs ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>Daftar tersimpan untuk pencatatan instan gratis</p>
             </div>
 
             {savedFoods.length === 0 ? (
-              <div className="text-center py-6 bg-slate-950/30 border border-slate-900 rounded-xl px-4">
-                <span className="text-xs text-slate-500">Daftar favorit Anda masih kosong. Cari makanan via kolom pencarian, lalu simpan ke favorit!</span>
+              <div className={`text-center py-8 border border-dashed rounded-2xl px-4 ${
+                isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-slate-950/40 border-slate-850'
+              }`}>
+                <span className="text-xs text-slate-500">Belum ada makanan tersimpan. Cari makanan melalui asisten dan pilih simpan ke favorit!</span>
               </div>
             ) : (
               <div className="space-y-3 max-h-120 overflow-y-auto pr-1">
                 {savedFoods.map((food) => (
-                  <div key={food.id} className="bg-slate-950 border border-slate-900 p-3.5 rounded-xl hover:border-slate-800 transition-colors">
+                  <div key={food.id} className={`p-4 rounded-2xl border transition-all ${
+                    isLight ? 'bg-slate-50/30 border-slate-200 hover:border-slate-300' : 'bg-slate-950 border-slate-900 hover:border-slate-850'
+                  }`}>
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="text-sm font-semibold text-slate-200">{food.food_name}</h4>
-                        <span className="text-xs text-slate-500">({food.base_serving_description})</span>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{food.food_name}</h4>
+                        <span className="text-[10px] text-slate-500">({food.base_serving_description})</span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 mt-3 pt-2.5 border-t border-slate-900 text-center text-[10px] font-semibold text-slate-400">
+                    <div className="grid grid-cols-4 gap-2 mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-900 text-center text-[10px] font-bold text-slate-500">
                       <div>
-                        <div className="text-slate-300 font-bold">{food.calories}</div>
+                        <div className="text-slate-800 dark:text-slate-350 font-black">{food.calories}</div>
                         <div>kkal</div>
                       </div>
                       <div>
-                        <div className="text-rose-400 font-bold">{food.protein}g</div>
+                        <div className="text-rose-500 font-black">{food.protein}g</div>
                         <div>Protein</div>
                       </div>
                       <div>
-                        <div className="text-amber-400 font-bold">{food.carbs}g</div>
+                        <div className="text-amber-550 font-black">{food.carbs}g</div>
                         <div>Karbo</div>
                       </div>
                       <div>
-                        <div className="text-sky-400 font-bold">{food.fat}g</div>
+                        <div className="text-sky-500 font-black">{food.fat}g</div>
                         <div>Lemak</div>
                       </div>
                     </div>
@@ -1120,22 +1213,66 @@ Progress Indicators
 
       </main>
 
+      {/* FLOATING PILL BOTTOM NAVIGATION BAR (Acuannya pada Gambar) */}
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-black/90 dark:bg-black/80 border border-neutral-800/80 rounded-full px-7 py-3 flex items-center space-x-7.5 shadow-2xl z-50 backdrop-blur-md">
+        <button
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+            setStatusMessage({ type: 'success', text: 'Kembali ke halaman utama dashboard.' })
+          }}
+          className="h-10 w-10 rounded-full bg-lime-400 text-black flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95"
+          title="Beranda Dashboard"
+        >
+          <Home className="h-5 w-5" />
+        </button>
+
+        <button
+          onClick={() => setShowRecalculate(true)}
+          className="h-10 w-10 rounded-full text-neutral-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+          title="Kalkulator Profil & Target"
+        >
+          <Sliders className="h-5 w-5" />
+        </button>
+
+        <button
+          onClick={() => setShowManualAdd(true)}
+          className="h-10 w-10 rounded-full text-neutral-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+          title="Input Manual Makanan"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+
+        {profile.role === 'pro' && (
+          <button
+            onClick={() => setShowApiKeyModal(true)}
+            className="h-10 w-10 rounded-full text-neutral-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+            title="Pengaturan Kunci API"
+          >
+            <Key className="h-5 w-5" />
+          </button>
+        )}
+      </nav>
+
       {/* MODAL 1: Mifflin-St Jeor Recalculator */}
       {showRecalculate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+          <div className={`w-full max-w-md border p-6 rounded-3xl shadow-2xl space-y-6 ${
+            isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+          }`}>
             <div>
-              <h3 className="text-lg font-bold text-white">Ubah Profil & Target Tubuh</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Atur ulang kalkulasi kalori harian Mifflin-St Jeor Anda</p>
+              <h3 className="text-xl font-black text-slate-800 dark:text-white">Atur Profil & Target Nutrisi</h3>
+              <p className="text-xs text-slate-500 mt-1">Sesuaikan kembali kalkulator target energi tubuh Anda</p>
             </div>
 
             <form onSubmit={handleRecalculate} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-350 mb-1">Jenis Kelamin</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Jenis Kelamin</label>
                 <select 
                   value={recalcForm.gender}
                   onChange={(e) => setRecalcForm({...recalcForm, gender: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                  className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-hidden ${
+                    isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-850 text-slate-200'
+                  }`}
                 >
                   <option value="male">Laki-laki</option>
                   <option value="female">Perempuan</option>
@@ -1144,7 +1281,7 @@ Progress Indicators
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-350 mb-1">Berat (kg)</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Berat (kg)</label>
                   <input 
                     type="number" 
                     required
@@ -1153,11 +1290,13 @@ Progress Indicators
                     placeholder="70"
                     value={recalcForm.weight}
                     onChange={(e) => setRecalcForm({...recalcForm, weight: e.target.value})}
-                    className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                    className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-hidden ${
+                      isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-850 text-slate-200'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-350 mb-1">Tinggi (cm)</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tinggi (cm)</label>
                   <input 
                     type="number" 
                     required
@@ -1166,11 +1305,13 @@ Progress Indicators
                     placeholder="170"
                     value={recalcForm.height}
                     onChange={(e) => setRecalcForm({...recalcForm, height: e.target.value})}
-                    className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                    className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-hidden ${
+                      isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-850 text-slate-200'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-350 mb-1">Umur (tahun)</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Umur (tahun)</label>
                   <input 
                     type="number" 
                     required
@@ -1179,32 +1320,38 @@ Progress Indicators
                     placeholder="25"
                     value={recalcForm.age}
                     onChange={(e) => setRecalcForm({...recalcForm, age: e.target.value})}
-                    className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                    className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-hidden ${
+                      isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-850 text-slate-200'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-350 mb-1">Tingkat Aktivitas Harian</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tingkat Aktivitas Harian</label>
                 <select 
                   value={recalcForm.activityLevel}
                   onChange={(e) => setRecalcForm({...recalcForm, activityLevel: Number(e.target.value)})}
-                  className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                  className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-hidden ${
+                    isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-955 border-slate-850 text-slate-200'
+                  }`}
                 >
                   <option value={1.2}>Sangat Jarang Olahraga (Kerja kantoran di meja)</option>
-                  <option value={1.375}>Olahraga Ringan (Jalan kaki/olahraga 1-3 hari/minggu)</option>
+                  <option value={1.375}>Olahraga Ringan (Olahraga 1-3 hari/minggu)</option>
                   <option value={1.55}>Aktif Sedang (Olahraga teratur 3-5 hari/minggu)</option>
-                  <option value={1.725}>Sangat Aktif (Latihan berat/olahraga harian 6-7 hari/minggu)</option>
-                  <option value={1.9}>Atlet / Pekerja Fisik Berat (Latihan berat 2x sehari)</option>
+                  <option value={1.725}>Sangat Aktif (Olahraga harian 6-7 hari/minggu)</option>
+                  <option value={1.9}>Atlet / Pekerja Fisik Berat (Kerja fisik berat)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-350 mb-1">Target Kebugaran</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Target Kebugaran</label>
                 <select 
                   value={recalcForm.goal}
                   onChange={(e) => setRecalcForm({...recalcForm, goal: e.target.value})}
-                  className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                  className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-hidden ${
+                    isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-955 border-slate-850 text-slate-200'
+                  }`}
                 >
                   <option value="lose">Menurunkan Berat Badan (-500 kkal)</option>
                   <option value="maintain">Menjaga Berat Badan (Kalori seimbang)</option>
@@ -1216,16 +1363,18 @@ Progress Indicators
                 <button 
                   type="button" 
                   onClick={() => setShowRecalculate(false)}
-                  className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-200 font-semibold py-2.5 rounded-lg text-sm cursor-pointer"
+                  className={`flex-1 font-semibold py-3 rounded-2xl text-sm cursor-pointer border ${
+                    isLight ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
+                  }`}
                 >
                   Batal
                 </button>
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-955 font-bold py-2.5 rounded-lg text-sm cursor-pointer"
+                  className="flex-1 bg-lime-400 hover:bg-lime-500 disabled:opacity-50 text-black font-extrabold py-3 rounded-2xl text-sm cursor-pointer shadow-md"
                 >
-                  {isSubmitting ? 'Menghitung...' : 'Simpan Perubahan'}
+                  {isSubmitting ? 'Menghitung...' : 'Simpan Profil'}
                 </button>
               </div>
             </form>
@@ -1236,27 +1385,31 @@ Progress Indicators
       {/* MODAL 2: Configure API Key (Pro Tier / BYOK) */}
       {showApiKeyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+          <div className={`w-full max-w-md border p-6 rounded-3xl shadow-2xl space-y-6 ${
+            isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+          }`}>
             <div>
-              <h3 className="text-lg font-bold text-white flex items-center">
-                <Key className="h-5 w-5 text-cyan-400 mr-2" />
+              <h3 className="text-lg font-black flex items-center">
+                <Key className="h-5 w-5 text-lime-500 mr-2" />
                 Kunci API Mandiri (Pro)
               </h3>
-              <p className="text-xs text-slate-450 mt-1">
-                Kunci API disimpan secara aman di dalam <span className="font-mono text-cyan-400">localStorage</span> browser Anda.
+              <p className="text-xs text-slate-500 mt-1">
+                Kunci API disimpan secara aman di dalam <span className="font-mono text-lime-650 dark:text-lime-400">localStorage</span> browser Anda.
                 Kunci ini tidak akan pernah dikirimkan atau disimpan ke database kami.
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-350 mb-1">DeepSeek API Key</label>
+                <label className="block text-xs font-semibold text-slate-450 mb-1.5">DeepSeek API Key</label>
                 <input 
                   type="password" 
                   placeholder="sk-..."
                   defaultValue={customApiKey}
                   id="api-key-input"
-                  className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-hidden focus:border-cyan-500 font-mono"
+                  className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden font-mono ${
+                    isLight ? 'bg-slate-55 border-slate-205 text-slate-900 focus:border-lime-500' : 'bg-slate-955 border-slate-850 text-slate-200 focus:border-lime-500'
+                  }`}
                 />
               </div>
 
@@ -1264,7 +1417,9 @@ Progress Indicators
                 <button 
                   type="button" 
                   onClick={() => setShowApiKeyModal(false)}
-                  className="flex-1 bg-slate-850 hover:bg-slate-800 border border-slate-850 text-slate-300 font-semibold py-2.5 rounded-lg text-sm cursor-pointer"
+                  className={`flex-1 font-semibold py-3 rounded-2xl text-sm cursor-pointer border ${
+                    isLight ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
+                  }`}
                 >
                   Batal
                 </button>
@@ -1274,7 +1429,7 @@ Progress Indicators
                     const input = document.getElementById('api-key-input') as HTMLInputElement
                     handleSaveApiKey(input.value)
                   }}
-                  className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-lg text-sm cursor-pointer"
+                  className="flex-1 bg-lime-400 hover:bg-lime-500 text-black font-extrabold py-3 rounded-2xl text-sm cursor-pointer"
                 >
                   Simpan Kunci
                 </button>
