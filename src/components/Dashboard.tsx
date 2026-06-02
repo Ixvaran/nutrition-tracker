@@ -123,7 +123,7 @@ export default function Dashboard({
   })
   
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
 
   // Load API Key and Theme from localStorage on mount
   useEffect(() => {
@@ -149,11 +149,24 @@ export default function Dashboard({
   }, [theme])
 
   // Save API Key to localStorage
-  const handleSaveApiKey = (key: string) => {
+  const handleSaveApiKey = async (key: string) => {
     localStorage.setItem('deepseek_api_key', key)
     setCustomApiKey(key)
     setShowApiKeyModal(false)
     setStatusMessage({ type: 'success', text: 'Kunci API berhasil disimpan secara lokal.' })
+
+    // Automatically toggle user role to PRO if they saved a key while on FREE tier
+    if (profile.role === 'free' && key.trim() !== '') {
+      setIsSubmitting(true)
+      const res = await toggleUserRole('pro')
+      setIsSubmitting(false)
+      if (res.error) {
+        setStatusMessage({ type: 'error', text: res.error })
+      } else {
+        setStatusMessage({ type: 'success', text: 'Kunci API disimpan dan Anda berhasil beralih ke paket PRO!' })
+        router.refresh()
+      }
+    }
   }
 
   // Toggle theme action
@@ -494,13 +507,35 @@ export default function Dashboard({
 
   // Role Toggler
   const handleToggleRole = async () => {
-    const nextRole = profile.role === 'free' ? 'pro' : 'free'
-    const res = await toggleUserRole(nextRole)
-    if (res.error) {
-      setStatusMessage({ type: 'error', text: res.error })
+    if (profile.role === 'free') {
+      // If no custom API key exists, force the user to input their own key first to activate PRO
+      const storedKey = localStorage.getItem('deepseek_api_key') || ''
+      if (!storedKey.trim()) {
+        setStatusMessage({ type: 'info', text: 'Masukkan Kunci API Anda sendiri terlebih dahulu untuk beralih ke paket PRO.' })
+        setShowApiKeyModal(true)
+        return
+      }
+
+      setIsSubmitting(true)
+      const res = await toggleUserRole('pro')
+      setIsSubmitting(false)
+      if (res.error) {
+        setStatusMessage({ type: 'error', text: res.error })
+      } else {
+        setStatusMessage({ type: 'success', text: 'Berhasil beralih ke paket PRO!' })
+        router.refresh()
+      }
     } else {
-      setStatusMessage({ type: 'success', text: `Berhasil beralih ke paket ${nextRole.toUpperCase()}` })
-      router.refresh()
+      // Switch back to FREE tier
+      setIsSubmitting(true)
+      const res = await toggleUserRole('free')
+      setIsSubmitting(false)
+      if (res.error) {
+        setStatusMessage({ type: 'error', text: res.error })
+      } else {
+        setStatusMessage({ type: 'success', text: 'Berhasil beralih ke paket GRATIS (FREE)' })
+        router.refresh()
+      }
     }
   }
 
@@ -766,6 +801,8 @@ export default function Dashboard({
           <div className={`col-span-12 p-4 rounded-2xl border flex items-center justify-between shadow-xs ${
             statusMessage.type === 'success' 
               ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+              : statusMessage.type === 'info'
+              ? 'bg-sky-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400'
               : 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-455'
           }`}>
             <span className="text-sm font-semibold">{statusMessage.text}</span>
