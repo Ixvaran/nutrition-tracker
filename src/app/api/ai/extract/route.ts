@@ -77,8 +77,10 @@ Apply this revision. Modify, add, or delete the ingredients in the list accordin
 IMPORTANT MACRONUTRIENT MATH RULES:
 - Protein and Carbs contain 4 calories per gram.
 - Fat contains 9 calories per gram.
-- For each ingredient and for the total, the calories MUST equal exactly: (protein * 4) + (carbs * 4) + (fat * 9). Adjust the values slightly if needed to satisfy this mathematical relation precisely.
-- Keep numbers as decimals where appropriate, but round total calories to the nearest integer.
+- For each ingredient, the "calories" field MUST be calculated exactly as: Math.round(protein * 4 + carbs * 4 + fat * 9). Do NOT output any other value.
+- The "total_calories" MUST be exactly equal to the sum of the calories of all individual ingredients.
+- Keep numbers as decimals where appropriate.
+- Your "analysis_thoughts" narrative MUST match this math exactly! If you state that an ingredient has specific macro grams, the calorie count mentioned in your text must match the formula (protein * 4 + carbs * 4 + fat * 9) exactly. Do NOT invent arbitrary calories in your narrative that contradict the formula.
 
 Your output must also include a clear nutritional explanation of the changes in "analysis_thoughts" (written in friendly Indonesian) and the references or databases used in "sources" (e.g., USDA FoodData Central, Panganku.org, Kemenkes, or nutritional estimates).
 
@@ -96,8 +98,10 @@ For each ingredient, you must estimate the serving weight in grams, and calculat
 IMPORTANT MACRONUTRIENT MATH RULES:
 - Protein and Carbs contain 4 calories per gram.
 - Fat contains 9 calories per gram.
-- For each ingredient and for the total, the calories MUST equal exactly: (protein * 4) + (carbs * 4) + (fat * 9). Adjust the values slightly if needed to satisfy this mathematical relation precisely.
-- Keep numbers as decimals where appropriate, but round total calories to the nearest integer.
+- For each ingredient, the "calories" field MUST be calculated exactly as: Math.round(protein * 4 + carbs * 4 + fat * 9). Do NOT output any other value.
+- The "total_calories" MUST be exactly equal to the sum of the calories of all individual ingredients.
+- Keep numbers as decimals where appropriate.
+- Your "analysis_thoughts" narrative MUST match this math exactly! If you state that an ingredient has specific macro grams, the calorie count mentioned in your text must match the formula (protein * 4 + carbs * 4 + fat * 9) exactly. Do NOT invent arbitrary calories in your narrative that contradict the formula.
 
 Your output must also include a clear breakdown of your nutritional analysis thought process/explanation in "analysis_thoughts" (written in Indonesian, describing how weights, protein, and calories were calculated based on the description) and the database sources or reference guidelines used in "sources" (an array of strings, e.g., USDA FoodData Central, Panganku, Kemenkes RI, etc.).
 
@@ -217,8 +221,29 @@ Your output must be a valid JSON object matching the following structure:
       }
     }
 
+    const data = validatedData.data
+
+    // Programmatic override to ensure 100% mathematical consistency in the response
+    const adjustedIngredients = data.parsed_ingredients.map(ing => {
+      const calculatedCalories = Math.round(ing.protein * 4 + ing.carbs * 4 + ing.fat * 9)
+      return {
+        ...ing,
+        calories: calculatedCalories
+      }
+    })
+
+    const total_protein = adjustedIngredients.reduce((sum, ing) => sum + ing.protein, 0)
+    const total_carbs = adjustedIngredients.reduce((sum, ing) => sum + ing.carbs, 0)
+    const total_fat = adjustedIngredients.reduce((sum, ing) => sum + ing.fat, 0)
+    const total_calories = adjustedIngredients.reduce((sum, ing) => sum + ing.calories, 0)
+
     return NextResponse.json({
-      ...validatedData.data,
+      ...data,
+      parsed_ingredients: adjustedIngredients,
+      total_calories,
+      total_protein: Math.round(total_protein * 10) / 10,
+      total_carbs: Math.round(total_carbs * 10) / 10,
+      total_fat: Math.round(total_fat * 10) / 10,
       tokens_spent: totalTokens
     })
   } catch (err: any) {
