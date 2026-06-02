@@ -5,6 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     role TEXT NOT NULL DEFAULT 'free' CHECK (role IN ('free', 'pro')),
+    username TEXT,
     daily_ai_requests INT NOT NULL DEFAULT 0,
     last_request_date DATE NOT NULL DEFAULT CURRENT_DATE,
     tdee_target NUMERIC NOT NULL DEFAULT 2000,
@@ -33,8 +34,18 @@ CREATE POLICY "Users can insert their own profile"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.users (id, role, daily_ai_requests, last_request_date, tdee_target, protein_target, carbs_target, fat_target)
-    VALUES (new.id, 'free', 0, CURRENT_DATE, 2000, 150, 200, 65);
+    INSERT INTO public.users (id, role, username, daily_ai_requests, last_request_date, tdee_target, protein_target, carbs_target, fat_target)
+    VALUES (
+        new.id, 
+        'free', 
+        COALESCE(new.raw_user_meta_data ->> 'username', 'User_' || substr(new.id::text, 1, 8)),
+        0, 
+        CURRENT_DATE, 
+        2000, 
+        150, 
+        200, 
+        65
+    );
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

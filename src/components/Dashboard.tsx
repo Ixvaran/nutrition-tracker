@@ -15,6 +15,7 @@ import { type AIExtractionResponse } from '@/lib/schemas'
 interface Profile {
   id: string
   role: 'free' | 'pro'
+  username?: string
   daily_ai_requests: number
   last_request_date: string
   tdee_target: number
@@ -367,6 +368,13 @@ export default function Dashboard({
           </div>
 
           <div className="flex items-center space-x-3">
+            {profile.username && (
+              <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-350">
+                <User className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Hi, {profile.username}</span>
+              </div>
+            )}
+
             {/* Quick date display/selector */}
             <input 
               type="date" 

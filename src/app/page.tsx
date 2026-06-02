@@ -38,6 +38,7 @@ export default async function Page({
       .insert({
         id: user.id,
         role: 'free',
+        username: user.user_metadata?.username || 'User_' + user.id.substring(0, 8),
         daily_ai_requests: 0,
         last_request_date: todayStr,
         tdee_target: 2000,

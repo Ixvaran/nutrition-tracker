@@ -30,6 +30,19 @@ export default function RegisterPage() {
         <form className="mt-8 space-y-6" action={formAction}>
           <div className="space-y-4 rounded-md">
             <div>
+              <label htmlFor="username" className="block text-sm font-medium text-slate-300 mb-1">
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                className="relative block w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2.5 text-white placeholder-slate-500 focus:z-10 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 sm:text-sm transition-all"
+                placeholder="Farhan"
+              />
+            </div>
+            <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1">
                 Email address
               </label>
