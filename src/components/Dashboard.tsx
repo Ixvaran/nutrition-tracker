@@ -794,7 +794,7 @@ export default function Dashboard({
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full grid grid-cols-12 gap-8">
         
         {/* Status Alerts */}
         {statusMessage && (
@@ -819,10 +819,10 @@ export default function Dashboard({
             <div className="absolute -top-24 -left-24 w-64 h-64 bg-lime-400/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+            <div className="grid grid-cols-12 gap-8 items-center relative z-10">
               
               {/* Left Column: Greeting and Motivation */}
-              <div className="lg:col-span-4 space-y-4">
+              <div className="col-span-12 lg:col-span-4 space-y-4">
                 <div className="inline-flex items-center space-x-2 bg-lime-400/20 text-lime-700 dark:text-lime-400 px-3 py-1.5 rounded-full text-xs font-bold border border-lime-400/30">
                   <Sparkles className="h-3.5 w-3.5 animate-pulse" />
                   <span>Kebugaran Harian</span>
@@ -861,7 +861,7 @@ export default function Dashboard({
               </div>
 
               {/* Middle Column: Calories Circular/Slider Indicator */}
-              <div className="lg:col-span-4">
+              <div className="col-span-12 lg:col-span-4">
                 <div className={`rounded-3xl p-5 border flex flex-col justify-between h-full relative overflow-hidden backdrop-blur-md ${
                   isLight ? 'bg-white/85 border-slate-350 shadow-xs' : 'bg-slate-955/40 border-slate-900/60'
                 }`}>
@@ -902,7 +902,7 @@ export default function Dashboard({
               </div>
 
               {/* Right Column: Macronutrients Dashboard */}
-              <div className="lg:col-span-4 space-y-3.5">
+              <div className="col-span-12 lg:col-span-4 space-y-3.5">
                 
                 {/* Protein */}
                 <div className={`p-3.5 rounded-2xl border transition-colors backdrop-blur-md ${
@@ -1043,7 +1043,7 @@ export default function Dashboard({
         </div>
 
         {/* Column 1: Progress Indicators (lg: 8) */}
-        <div className="lg:col-span-8 space-y-8">
+        <div className="col-span-12 lg:col-span-8 space-y-8 min-w-0">
           {/* Logging Component / search and options */}
           <div className={`p-5 sm:p-6 rounded-3xl shadow-xs transition-colors border-2 ${
             isLight ? 'bg-white border-slate-400' : 'bg-[#0f1524] border-slate-900'
@@ -1689,7 +1689,7 @@ export default function Dashboard({
         </div>
 
         {/* Column 2: Weekly Recap & Personal Database Library (lg: 4) */}
-        <div className="lg:col-span-4 space-y-8">
+        <div className="col-span-12 lg:col-span-4 space-y-8 min-w-0">
           
           {/* WEEKLY RECAP CARD */}
           <div className={`p-5 sm:p-6 rounded-3xl shadow-xs transition-colors space-y-4 border-2 ${
