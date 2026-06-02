@@ -55,26 +55,41 @@ export async function POST(req: NextRequest) {
 
     // Parse the body
     const body = await req.json()
-    const { query } = body
+    const { query, currentResult, revisionPrompt } = body
 
     if (!query || typeof query !== 'string' || query.trim() === '') {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 })
     }
 
-    // 3. Make DeepSeek NLU request
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKeyValue}`
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert nutritionist and data parser. Convert raw qualitative food descriptions into structured ingredients.
+    // 3. Setup DeepSeek NLU messages
+    const messages = []
+    if (currentResult && revisionPrompt) {
+      messages.push({
+        role: 'system',
+        content: `You are an expert nutritionist and data parser.
+You previously converted a food description into structured ingredients:
+${JSON.stringify(currentResult, null, 2)}
+
+The user now wants to revise or apply corrections/changes to this parsing.
+Revision Instruction: "${revisionPrompt}"
+
+Apply this revision. Modify, add, or delete the ingredients in the list accordingly. Estimate or recalculate serving weights and nutritional values: calories, protein (g), carbs (g), fat (g).
+IMPORTANT MACRONUTRIENT MATH RULES:
+- Protein and Carbs contain 4 calories per gram.
+- Fat contains 9 calories per gram.
+- For each ingredient and for the total, the calories MUST equal exactly: (protein * 4) + (carbs * 4) + (fat * 9). Adjust the values slightly if needed to satisfy this mathematical relation precisely.
+- Keep numbers as decimals where appropriate, but round total calories to the nearest integer.
+
+Your output must be a valid JSON object matching the exact same structure.`
+      })
+      messages.push({
+        role: 'user',
+        content: `Original Query: "${query}"\nRevision Request: "${revisionPrompt}"`
+      })
+    } else {
+      messages.push({
+        role: 'system',
+        content: `You are an expert nutritionist and data parser. Convert raw qualitative food descriptions into structured ingredients.
 For each ingredient, you must estimate the serving weight in grams, and calculate nutritional values: calories, protein (g), carbs (g), fat (g).
 IMPORTANT MACRONUTRIENT MATH RULES:
 - Protein and Carbs contain 4 calories per gram.
@@ -100,12 +115,24 @@ Your output must be a valid JSON object matching the following structure:
   "total_carbs": 0,
   "total_fat": 10
 }`
-          },
-          {
-            role: 'user',
-            content: `Parse this food entry: "${query}"`
-          }
-        ]
+      })
+      messages.push({
+        role: 'user',
+        content: `Parse this food entry: "${query}"`
+      })
+    }
+
+    // 4. Make DeepSeek NLU request
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKeyValue}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        response_format: { type: 'json_object' },
+        messages
       })
     })
 

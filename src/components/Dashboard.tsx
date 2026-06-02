@@ -92,6 +92,8 @@ export default function Dashboard({
   const [aiResult, setAiResult] = useState<(AIExtractionResponse & { tokens_spent?: number }) | null>(null)
   const [aiSaveToLib, setAiSaveToLib] = useState(true)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [revisionPrompt, setRevisionPrompt] = useState('')
+  const [aiRevising, setAiRevising] = useState(false)
   
   // Form states configured as strings to prevent leading zeros in UI
   const [recalcForm, setRecalcForm] = useState({
@@ -125,6 +127,18 @@ export default function Dashboard({
       setTheme(savedTheme)
     }
   }, [])
+
+  // Apply theme class to document element
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const root = window.document.documentElement
+      if (theme === 'dark') {
+        root.classList.add('dark')
+      } else {
+        root.classList.remove('dark')
+      }
+    }
+  }, [theme])
 
   // Save API Key to localStorage
   const handleSaveApiKey = (key: string) => {
@@ -254,6 +268,138 @@ export default function Dashboard({
       })
       setShowManualAdd(false)
       router.refresh()
+    }
+  }
+
+  // Helper to update specific ingredient values inline
+  const updateIngredientField = (index: number, field: string, value: any) => {
+    if (!aiResult) return
+    const updatedIngredients = [...aiResult.parsed_ingredients]
+    
+    let typedValue = value
+    if (field !== 'ingredient_name') {
+      typedValue = value === '' ? 0 : parseFloat(value)
+      if (isNaN(typedValue)) typedValue = 0
+    }
+    
+    updatedIngredients[index] = {
+      ...updatedIngredients[index],
+      [field]: typedValue
+    }
+    
+    // Auto-calculate calories for this row if protein, carbs, or fat changed
+    if (field === 'protein' || field === 'carbs' || field === 'fat') {
+      const p = field === 'protein' ? typedValue : (updatedIngredients[index].protein || 0)
+      const c = field === 'carbs' ? typedValue : (updatedIngredients[index].carbs || 0)
+      const f = field === 'fat' ? typedValue : (updatedIngredients[index].fat || 0)
+      updatedIngredients[index].calories = Math.round(p * 4 + c * 4 + f * 9)
+    }
+    
+    // Calculate new totals
+    const total_calories = Math.round(updatedIngredients.reduce((sum, ing) => sum + (Number(ing.calories) || 0), 0))
+    const total_protein = Math.round(updatedIngredients.reduce((sum, ing) => sum + (Number(ing.protein) || 0), 0) * 10) / 10
+    const total_carbs = Math.round(updatedIngredients.reduce((sum, ing) => sum + (Number(ing.carbs) || 0), 0) * 10) / 10
+    const total_fat = Math.round(updatedIngredients.reduce((sum, ing) => sum + (Number(ing.fat) || 0), 0) * 10) / 10
+    
+    setAiResult({
+      ...aiResult,
+      parsed_ingredients: updatedIngredients,
+      total_calories,
+      total_protein,
+      total_carbs,
+      total_fat
+    })
+  }
+
+  // Helper to delete an ingredient row inline
+  const deleteIngredient = (index: number) => {
+    if (!aiResult) return
+    const updatedIngredients = aiResult.parsed_ingredients.filter((_, i) => i !== index)
+    
+    const total_calories = Math.round(updatedIngredients.reduce((sum, ing) => sum + (Number(ing.calories) || 0), 0))
+    const total_protein = Math.round(updatedIngredients.reduce((sum, ing) => sum + (Number(ing.protein) || 0), 0) * 10) / 10
+    const total_carbs = Math.round(updatedIngredients.reduce((sum, ing) => sum + (Number(ing.carbs) || 0), 0) * 10) / 10
+    const total_fat = Math.round(updatedIngredients.reduce((sum, ing) => sum + (Number(ing.fat) || 0), 0) * 10) / 10
+    
+    setAiResult({
+      ...aiResult,
+      parsed_ingredients: updatedIngredients,
+      total_calories,
+      total_protein,
+      total_carbs,
+      total_fat
+    })
+  }
+
+  // Helper to add a new empty ingredient row inline
+  const addIngredient = () => {
+    if (!aiResult) return
+    const newIngredient = {
+      ingredient_name: 'Bahan Baru',
+      estimated_grams: 100,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0
+    }
+    const updatedIngredients = [...aiResult.parsed_ingredients, newIngredient]
+    
+    setAiResult({
+      ...aiResult,
+      parsed_ingredients: updatedIngredients
+    })
+  }
+
+  // Handle automatic analysis revision via API
+  const handleAiRevision = async () => {
+    if (!revisionPrompt.trim() || !aiResult) return
+    setAiRevising(true)
+    setAiError(null)
+    
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+
+      if (profile.role === 'pro') {
+        if (!customApiKey) {
+          setAiRevising(false)
+          setShowApiKeyModal(true)
+          setAiError('Anda menggunakan Pro Tier (Kunci Mandiri). Silakan masukkan Kunci API Anda terlebih dahulu.')
+          return
+        }
+        headers['x-api-key'] = customApiKey
+      }
+
+      const res = await fetch('/api/ai/extract', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ 
+          query: searchTerm, // original query
+          currentResult: {
+            food_name: aiResult.food_name,
+            parsed_ingredients: aiResult.parsed_ingredients,
+            total_calories: aiResult.total_calories,
+            total_protein: aiResult.total_protein,
+            total_carbs: aiResult.total_carbs,
+            total_fat: aiResult.total_fat
+          },
+          revisionPrompt: revisionPrompt
+        })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal merevisi hasil analisis.')
+      }
+
+      setAiResult(data)
+      setRevisionPrompt('')
+    } catch (err: any) {
+      setAiError(err.message || 'Terjadi kesalahan saat menghubungkan ke asisten untuk revisi.')
+    } finally {
+      setAiRevising(false)
     }
   }
 
@@ -1039,16 +1185,24 @@ export default function Dashboard({
 
             {aiResult && (
               <div className={`p-5 rounded-2xl border-2 mt-4 ${
-                isLight ? 'bg-slate-50 border-slate-400' : 'bg-slate-955 border-slate-900'
+                isLight ? 'bg-slate-50 border-slate-400' : 'bg-[#0e1320] border-slate-900'
               } space-y-4`}>
-                <div className={`flex justify-between items-start border-b pb-3 ${isLight ? 'border-slate-400' : 'border-slate-900'}`}>
-                  <div>
+                <div className={`flex justify-between items-start border-b pb-3 ${isLight ? 'border-slate-350' : 'border-slate-900'}`}>
+                  <div className="flex-1 mr-4">
                     <span className="text-[10px] uppercase tracking-wider font-extrabold text-lime-700 dark:text-lime-400">Ditemukan Hasil Berikut:</span>
-                    <h4 className="text-md font-extrabold text-slate-800 dark:text-white mt-0.5">{aiResult.food_name}</h4>
+                    <input 
+                      type="text"
+                      value={aiResult.food_name}
+                      onChange={(e) => setAiResult({ ...aiResult, food_name: e.target.value })}
+                      className={`text-md font-extrabold mt-1 bg-transparent border-b focus:outline-hidden focus:ring-0 focus:border-lime-500 w-full py-0.5 transition-colors font-sans ${
+                        isLight ? 'text-slate-900 border-slate-300' : 'text-white border-slate-800'
+                      }`}
+                      placeholder="Nama Makanan"
+                    />
                   </div>
                   <button 
                     onClick={() => setAiResult(null)} 
-                    className={`text-xs font-bold ${isLight ? 'text-slate-750 hover:text-slate-950' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`text-xs font-bold shrink-0 mt-1 ${isLight ? 'text-slate-750 hover:text-slate-950' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     Batal
                   </button>
@@ -1058,38 +1212,198 @@ export default function Dashboard({
                 <div className="space-y-2">
                   <div className={`text-[10px] font-extrabold uppercase tracking-wider ${isLight ? 'text-slate-850' : 'text-slate-455'}`}>Bahan Makanan yang Terdeteksi</div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
+                    <table className="w-full text-xs text-left min-w-[600px]">
                       <thead>
                         <tr className={`border-b ${isLight ? 'text-slate-850 border-slate-400' : 'text-slate-400 border-slate-900'}`}>
-                          <th className="pb-2 font-bold">Bahan</th>
-                          <th className="pb-2 font-bold text-right">Berat</th>
-                          <th className="pb-2 font-bold text-right">Kalori</th>
-                          <th className="pb-2 font-bold text-right">Protein</th>
-                          <th className="pb-2 font-bold text-right">Karbo</th>
-                          <th className="pb-2 font-bold text-right">Lemak</th>
+                          <th className="pb-2 font-bold w-[35%]">Bahan</th>
+                          <th className="pb-2 font-bold text-right w-[12%]">Berat</th>
+                          <th className="pb-2 font-bold text-right w-[12%]">Kalori</th>
+                          <th className="pb-2 font-bold text-right w-[10%]">Protein</th>
+                          <th className="pb-2 font-bold text-right w-[10%]">Karbo</th>
+                          <th className="pb-2 font-bold text-right w-[10%]">Lemak</th>
+                          <th className="pb-2 font-bold text-right w-[6%]">Aksi</th>
                         </tr>
                       </thead>
-                      <tbody className={`divide-y ${isLight ? 'divide-slate-400' : 'divide-slate-900'}`}>
+                      <tbody className={`divide-y ${isLight ? 'divide-slate-300' : 'divide-slate-900'}`}>
                         {aiResult.parsed_ingredients.map((ing, i) => (
                           <tr key={i} className="text-slate-700 dark:text-slate-300">
-                            <td className="py-2.5 text-slate-900 dark:text-slate-200 font-bold">{ing.ingredient_name}</td>
-                            <td className={`py-2.5 text-right font-mono ${isLight ? 'text-slate-850 font-semibold' : 'text-slate-500'}`}>{ing.estimated_grams}g</td>
-                            <td className="py-2.5 text-right font-mono">{ing.calories} kkal</td>
-                            <td className="py-2.5 text-right text-rose-500 font-mono font-bold">{ing.protein}g</td>
-                            <td className="py-2.5 text-right text-amber-500 font-mono font-bold">{ing.carbs}g</td>
-                            <td className="py-2.5 text-right text-sky-500 font-mono font-bold">{ing.fat}g</td>
+                            <td className="py-2 pr-2">
+                              <input
+                                type="text"
+                                value={ing.ingredient_name}
+                                onChange={(e) => updateIngredientField(i, 'ingredient_name', e.target.value)}
+                                className={`w-full bg-transparent px-2 py-1 text-xs rounded-xl focus:outline-hidden focus:ring-2 focus:ring-lime-500 font-bold border transition-all ${
+                                  isLight 
+                                    ? 'border-slate-300 bg-white text-slate-900 focus:border-slate-400' 
+                                    : 'border-slate-855 bg-[#161c2a] text-slate-100 focus:border-slate-700'
+                                }`}
+                              />
+                            </td>
+                            <td className="py-2 pr-2 text-right">
+                              <div className="flex items-center space-x-1 justify-end">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  value={ing.estimated_grams}
+                                  onChange={(e) => updateIngredientField(i, 'estimated_grams', e.target.value)}
+                                  className={`w-14 text-right bg-transparent px-1.5 py-1 text-xs rounded-xl focus:outline-hidden focus:ring-2 focus:ring-lime-500 font-mono font-bold border transition-all ${
+                                    isLight 
+                                      ? 'border-slate-300 bg-white text-slate-900 focus:border-slate-400' 
+                                      : 'border-slate-855 bg-[#161c2a] text-slate-100 focus:border-slate-700'
+                                  }`}
+                                />
+                                <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>g</span>
+                              </div>
+                            </td>
+                            <td className="py-2 pr-2 text-right">
+                              <div className="flex items-center space-x-1 justify-end">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  value={ing.calories}
+                                  onChange={(e) => updateIngredientField(i, 'calories', e.target.value)}
+                                  className={`w-16 text-right bg-transparent px-1.5 py-1 text-xs rounded-xl focus:outline-hidden focus:ring-2 focus:ring-lime-500 font-mono font-bold border transition-all ${
+                                    isLight 
+                                      ? 'border-slate-300 bg-white text-slate-900 focus:border-slate-400' 
+                                      : 'border-slate-855 bg-[#161c2a] text-slate-100 focus:border-slate-700'
+                                  }`}
+                                />
+                              </div>
+                            </td>
+                            <td className="py-2 pr-2 text-right">
+                              <div className="flex items-center space-x-1 justify-end">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  value={ing.protein}
+                                  onChange={(e) => updateIngredientField(i, 'protein', e.target.value)}
+                                  className={`w-12 text-right bg-transparent px-1.5 py-1 text-xs rounded-xl focus:outline-hidden focus:ring-2 focus:ring-lime-500 font-mono font-bold border transition-all ${
+                                    isLight 
+                                      ? 'border-slate-300 bg-white text-rose-600 focus:border-slate-400' 
+                                      : 'border-slate-855 bg-[#161c2a] text-rose-455 focus:border-slate-700'
+                                  }`}
+                                />
+                                <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>g</span>
+                              </div>
+                            </td>
+                            <td className="py-2 pr-2 text-right">
+                              <div className="flex items-center space-x-1 justify-end">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  value={ing.carbs}
+                                  onChange={(e) => updateIngredientField(i, 'carbs', e.target.value)}
+                                  className={`w-12 text-right bg-transparent px-1.5 py-1 text-xs rounded-xl focus:outline-hidden focus:ring-2 focus:ring-lime-500 font-mono font-bold border transition-all ${
+                                    isLight 
+                                      ? 'border-slate-300 bg-white text-amber-600 focus:border-slate-400' 
+                                      : 'border-slate-855 bg-[#161c2a] text-amber-500 focus:border-slate-700'
+                                  }`}
+                                />
+                                <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>g</span>
+                              </div>
+                            </td>
+                            <td className="py-2 pr-2 text-right">
+                              <div className="flex items-center space-x-1 justify-end">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  value={ing.fat}
+                                  onChange={(e) => updateIngredientField(i, 'fat', e.target.value)}
+                                  className={`w-12 text-right bg-transparent px-1.5 py-1 text-xs rounded-xl focus:outline-hidden focus:ring-2 focus:ring-lime-500 font-mono font-bold border transition-all ${
+                                    isLight 
+                                      ? 'border-slate-300 bg-white text-sky-600 focus:border-slate-400' 
+                                      : 'border-slate-855 bg-[#161c2a] text-sky-455 focus:border-slate-700'
+                                  }`}
+                                />
+                                <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>g</span>
+                              </div>
+                            </td>
+                            <td className="py-2 pl-2 text-right">
+                              <button
+                                onClick={() => deleteIngredient(i)}
+                                className="p-1.5 rounded-xl hover:bg-rose-500/10 text-rose-500 hover:text-rose-650 transition-colors cursor-pointer"
+                                title="Hapus Bahan Makanan"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
                           </tr>
                         ))}
+
+                        {/* Add Row Button Row */}
+                        <tr>
+                          <td colSpan={7} className="py-2.5">
+                            <button
+                              onClick={addIngredient}
+                              className={`w-full py-2 px-4 rounded-xl border border-dashed text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
+                                isLight 
+                                  ? 'border-slate-350 text-slate-800 bg-white hover:bg-slate-100 hover:border-slate-400' 
+                                  : 'border-slate-800 text-slate-300 bg-slate-900/40 hover:bg-slate-900 hover:border-slate-750'
+                              }`}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1.5 text-lime-600" />
+                              Tambah Bahan Makanan Baru
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* Total Nutrisi Row */}
                         <tr className={`font-extrabold text-slate-900 dark:text-white border-t ${isLight ? 'border-slate-350' : 'border-slate-800'}`}>
-                          <td className="py-3 text-lime-700 dark:text-lime-450">Total Nutrisi</td>
+                          <td className="py-3 text-lime-700 dark:text-lime-450 font-bold">Total Nutrisi</td>
                           <td className="py-3 text-right"></td>
-                          <td className="py-3 text-right text-lime-700 dark:text-lime-400 font-mono">{aiResult.total_calories} kkal</td>
-                          <td className="py-3 text-right text-rose-500 font-mono">{aiResult.total_protein}g</td>
-                          <td className="py-3 text-right text-amber-500 font-mono">{aiResult.total_carbs}g</td>
-                          <td className="py-3 text-right text-sky-500 font-mono">{aiResult.total_fat}g</td>
+                          <td className="py-3 text-right text-lime-700 dark:text-lime-400 font-mono font-black">{aiResult.total_calories} kkal</td>
+                          <td className="py-3 text-right text-rose-500 font-mono font-black">{aiResult.total_protein}g</td>
+                          <td className="py-3 text-right text-amber-500 font-mono font-black">{aiResult.total_carbs}g</td>
+                          <td className="py-3 text-right text-sky-500 font-mono font-black">{aiResult.total_fat}g</td>
+                          <td className="py-3 text-right"></td>
                         </tr>
                       </tbody>
                     </table>
+                  </div>
+                </div>
+
+                {/* AI Revision Prompt Section */}
+                <div className={`p-4 rounded-2xl border-2 space-y-2 mt-4 transition-colors ${
+                  isLight ? 'bg-slate-100 border-slate-350' : 'bg-slate-900/40 border-slate-900'
+                }`}>
+                  <label className={`block text-xs font-bold uppercase tracking-wider ${isLight ? 'text-slate-850' : 'text-slate-455'}`}>
+                    Revisi atau Koreksi Hasil Analisis AI
+                  </label>
+                  <p className={`text-[11px] font-semibold leading-relaxed ${isLight ? 'text-slate-800' : 'text-slate-455'}`}>
+                    Kurang sesuai? Tulis bagian mana yang salah (misal: "susunya diganti non-fat" atau "tambah gula 1 sendok makan") agar AI memperbarui analisisnya.
+                  </p>
+                  <div className="flex space-x-2.5">
+                    <input
+                      type="text"
+                      value={revisionPrompt}
+                      onChange={(e) => setRevisionPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAiRevision()
+                        }
+                      }}
+                      placeholder="Contoh: Susu kental manis diganti susu kedelai..."
+                      className={`flex-1 bg-transparent px-3.5 py-2.5 text-xs rounded-xl focus:outline-hidden focus:ring-2 focus:ring-lime-500 font-medium border transition-all ${
+                        isLight 
+                          ? 'border-slate-300 bg-white text-slate-950 placeholder-slate-500' 
+                          : 'border-slate-855 bg-[#0a0f1d] text-slate-100 placeholder-slate-600'
+                      }`}
+                      disabled={aiRevising}
+                    />
+                    <button
+                      onClick={handleAiRevision}
+                      disabled={aiRevising || !revisionPrompt.trim()}
+                      className="bg-lime-400 hover:bg-lime-550 disabled:opacity-50 text-black font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center whitespace-nowrap shadow-md shadow-lime-950/10"
+                    >
+                      {aiRevising ? (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                          Memproses...
+                        </>
+                      ) : (
+                        'Kirim Revisi'
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -1100,7 +1414,7 @@ export default function Dashboard({
                     checked={aiSaveToLib}
                     onChange={(e) => setAiSaveToLib(e.target.checked)}
                     className={`rounded bg-slate-100 text-lime-550 focus:ring-0 cursor-pointer ${
-                      isLight ? 'border-slate-400' : 'border-slate-855'
+                      isLight ? 'border-slate-350' : 'border-slate-855'
                     }`}
                   />
                   <label htmlFor="aiSaveToLib" className={`text-xs font-semibold cursor-pointer ${isLight ? 'text-slate-800' : 'text-slate-455'}`}>
@@ -1112,7 +1426,7 @@ export default function Dashboard({
                   <button 
                     onClick={handleSaveAiResult}
                     disabled={isSubmitting}
-                    className="flex-1 bg-lime-400 hover:bg-lime-500 disabled:opacity-50 text-black font-extrabold py-3.5 rounded-2xl text-xs tracking-wider transition-colors cursor-pointer shadow-md shadow-lime-950/5"
+                    className="flex-1 bg-lime-400 hover:bg-lime-550 disabled:opacity-50 text-black font-extrabold py-3.5 rounded-2xl text-xs tracking-wider transition-colors cursor-pointer shadow-md shadow-lime-950/5"
                   >
                     {isSubmitting ? 'Menyimpan...' : 'Konfirmasi & Masukkan ke Buku Harian'}
                   </button>
